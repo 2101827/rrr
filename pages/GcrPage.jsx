@@ -1,0 +1,498 @@
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { useNavigate } from "react-router-dom"; 
+import Papa from "papaparse";
+import dayjs from "dayjs";
+import isBetween from "dayjs/plugin/isBetween";
+import {
+  BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList, AreaChart, Area
+} from "recharts";
+
+// Import your new CSS file
+import "./kpipage.css";
+
+// --- LOGIC START (EXACTLY AS PROVIDED) ---
+
+dayjs.extend(isBetween);
+
+const QUICK_FILTERS = {
+  NONE: "none",
+  DAY_PREV_DAY: "day_prev_day",
+  WEEK_LAST_WEEK: "week_last_week",
+  MONTH_LAST_MONTH: "month_last_month",
+  YEAR_PREV_YEAR_1: "year_prev_1",
+  YEAR_PREV_YEAR_2: "year_prev_2",
+  YEAR_PREV_YEAR_3: "year_prev_3",
+};
+
+const CLIENT_FOLDERS = {
+  entfw: ["entfw"],
+  eca: ["eca"],
+  soundhealth: ["soundhealth"],
+};
+
+// --- HELPER: Compact Number Formatter ---
+const formatCompactNumber = (number) => {
+  if (!number) return "$0";
+  const absValue = Math.abs(number);
+  if (absValue >= 1000000) {
+    return '$' + (number / 1000000).toFixed(1) + 'M';
+  } else if (absValue >= 1000) {
+    return '$' + (number / 1000).toFixed(1) + 'K';
+  }
+  return '$' + number.toLocaleString();
+};
+
+const parseCSV = async (filePath) => {
+  try {
+    const res = await fetch(filePath);
+    if (!res.ok) {
+      console.warn(`Failed to fetch ${filePath}: ${res.statusText} - Skipping file`);
+      return [];
+    }
+    const text = await res.text();
+    return new Promise((resolve, reject) => {
+      Papa.parse(text, {
+        header: true,
+        dynamicTyping: false,
+        skipEmptyLines: true,
+        complete: (results) => {
+          const normalized = results.data.map((r) => ({
+            ...r,
+            month: r.month || (r.Date_of_Service ? dayjs(r.Date_of_Service).format("MMM YY") : (r.Charge_Entry_Date ? dayjs(r.Charge_Entry_Date).format("MMM YY") : "")),
+            Billed_Amount: Number(String(r.Billed_Amount || "0").replace(/,/g, "").replace(/"/g, "")),
+            Paid_Amount: Number(String(r.Paid_Amount || "0").replace(/,/g, "").replace(/"/g, "")),
+            Date_of_Service: r.Date_of_Service || null,
+            Charge_Entry_Date: r.Charge_Entry_Date || null,
+          }));
+          resolve(normalized);
+        },
+        error: (error) => reject(error)
+      });
+    });
+  } catch (error) {
+    console.error(`Fetch error for ${filePath}:`, error);
+    return [];
+  }
+};
+
+function DropdownAvatar() {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef(null);
+  const navigate = useNavigate();
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+  
+  return (
+    <div style={{ position: "relative" }} ref={menuRef}>
+      <button
+        onClick={() => setOpen((prev) => !prev)}
+        style={{
+          width: "40px", height: "40px", borderRadius: "50%",
+          background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
+          color: "white", fontWeight: "600", fontSize: "14px",
+          border: "2px solid #fff", boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
+          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center"
+        }}
+      >
+        JD
+      </button>
+      {open && (
+        <div style={{
+          position: "absolute", top: "48px", right: 0,
+          background: "white", border: "1px solid #e5e7eb", borderRadius: "8px",
+          boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)", minWidth: "160px", zIndex: 1000,
+          overflow: "hidden"
+        }}>
+          <div style={{ padding: "10px 16px", cursor: "pointer", fontSize: "14px", color: "#374151", borderBottom: "1px solid #f3f4f6" }} onClick={() => navigate("/policy")}>Privacy Policy</div>
+          <div style={{ padding: "10px 16px", cursor: "pointer", fontSize: "14px", color: "#ef4444" }} onClick={() => navigate("/")}>Logout</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function GcrPage() {
+  const navigate = useNavigate();
+  const [allChargesData, setAllChargesData] = useState([]);
+  const lastDayOfLastMonth = dayjs().subtract(1, 'month').endOf('month');
+  const [startDate, setStartDate] = useState(dayjs().subtract(3, "month").format("YYYY-MM-DD"));
+  const [endDate, setEndDate] = useState(dayjs().format("YYYY-MM-DD"));
+  const [quickFilter, setQuickFilter] = useState(QUICK_FILTERS.NONE);
+  const [selectedClient, setSelectedClient] = useState("entfw");
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [payerPage, setPayerPage] = useState(1);
+  
+  const rowsPerPage = 5; 
+  const payersPerPage = 6;
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const folders = CLIENT_FOLDERS[selectedClient] || [];
+        const paths = folders.map(folder => `/${folder}/charges.csv`);
+        const filePromises = paths.map(path => parseCSV(path));
+        const allData = await Promise.all(filePromises);
+        const combinedCharges = allData.flat();
+        setAllChargesData(combinedCharges);
+      } catch (err) {
+        console.error("Error loading client CSV files:", err);
+      }
+    };
+    loadData();
+  }, [selectedClient]);
+
+  useEffect(() => {
+    if (quickFilter === QUICK_FILTERS.NONE) {
+      const lastDayOfLastMonth = dayjs().subtract(1, 'month').endOf('month');  
+      const startOfThreeMonthsAgo = lastDayOfLastMonth.subtract(2, 'month').startOf('month'); 
+      setStartDate(startOfThreeMonthsAgo.format("YYYY-MM-DD")); 
+      setEndDate(lastDayOfLastMonth.format("YYYY-MM-DD")); 
+      return;
+    }
+    const today = dayjs();
+    let start, end;
+    switch (quickFilter) {
+      case QUICK_FILTERS.DAY_PREV_DAY:
+        start = today.subtract(1, "day");
+        end = today.subtract(1, "day");
+        break;
+      case QUICK_FILTERS.WEEK_LAST_WEEK:
+        start = today.subtract(1, "week").startOf("week");
+        end = today.subtract(1, "week").endOf("week");
+        break;
+      case QUICK_FILTERS.MONTH_LAST_MONTH:
+        start = today.subtract(1, "month").startOf("month");
+        end = today.subtract(1, "month").endOf("month");
+        break;
+      case QUICK_FILTERS.YEAR_PREV_YEAR_1:
+        start = dayjs("2025-01-01");
+        end = dayjs("2025-12-31");
+        break;
+      case QUICK_FILTERS.YEAR_PREV_YEAR_2:
+        start = dayjs("2024-01-01");
+        end = dayjs("2024-12-31");
+        break;
+      case QUICK_FILTERS.YEAR_PREV_YEAR_3:
+        start = dayjs("2023-01-01");
+        end = dayjs("2023-12-31");
+        break;
+      default:
+        return;
+    }
+    setStartDate(start.format("YYYY-MM-DD"));
+    setEndDate(end.format("YYYY-MM-DD"));
+  }, [quickFilter]);
+
+  const { filteredCharges, prevCharges } = useMemo(() => {
+    const start = dayjs(startDate);
+    const end = dayjs(endDate);
+    const duration = end.diff(start, 'day');
+    const prevEnd = start.subtract(1, 'day');
+    const prevStart = prevEnd.subtract(duration, 'day');
+
+    const filterByDate = (data) => {
+      const current = data.filter((r) => {
+        const postedDate = dayjs(r.Charge_Entry_Date);
+        return postedDate.isValid() && postedDate.isBetween(start, end, null, '[]');
+      });
+      const previous = data.filter((r) => {
+        const postedDate = dayjs(r.Charge_Entry_Date);
+        return postedDate.isValid() && postedDate.isBetween(prevStart, prevEnd, null, '[]');
+      });
+      return { current, previous };
+    };
+    const { current, previous } = filterByDate(allChargesData);
+    return { filteredCharges: current, prevCharges: previous };
+  }, [allChargesData, startDate, endDate]);
+
+  const kpiMetrics = useMemo(() => {
+    const getMetrics = (dataset) => {
+      if (!dataset || dataset.length === 0) return { totalBilled: 0, totalPaid: 0, gcr: 0 };
+      const totalBilled = dataset.reduce((sum, d) => sum + d.Billed_Amount, 0);
+      const totalPaid = dataset.reduce((sum, d) => sum + d.Paid_Amount, 0);
+      const gcr = totalBilled > 0 ? (totalPaid / totalBilled) * 100 : 0;
+      return { totalBilled, totalPaid, gcr };
+    };
+    const mainMetrics = getMetrics(filteredCharges);
+    return {
+      overallGcr: mainMetrics.gcr.toFixed(2),
+      totalPaid: mainMetrics.totalPaid,
+      totalBilled: mainMetrics.totalBilled,
+    };
+  }, [filteredCharges]);
+
+  const filteredMonthlyData = useMemo(() => {
+    const INDUSTRY_STANDARD_GCR_TARGET = 40;
+    const monthlyAggregated = {};
+    filteredCharges.forEach((d) => {
+      const postedDate = dayjs(d.Charge_Entry_Date);
+      if (!postedDate.isValid()) return;
+      const month = postedDate.format("MMM YY");
+      if (!monthlyAggregated[month]) {
+        monthlyAggregated[month] = { billed: 0, paid: 0, date: postedDate.startOf('month') };
+      }
+      monthlyAggregated[month].billed += d.Billed_Amount || 0;
+      monthlyAggregated[month].paid += d.Paid_Amount || 0;
+    });
+    let data = Object.entries(monthlyAggregated)
+      .sort(([, a], [, b]) => a.date.unix() - b.date.unix())
+      .map(([month, vals]) => ({
+        month,
+        actual: +(vals.billed > 0 ? (vals.paid / vals.billed) * 100 : 0).toFixed(2),
+        target: INDUSTRY_STANDARD_GCR_TARGET,
+      }));
+    
+    if (data.length === 1) {
+        const p = data[0];
+        data = [{...p, month: ""}, p, {...p, month: " "}];
+    }
+    return data;
+  }, [filteredCharges]);
+
+const avgVsLastMonthGcrData = useMemo(() => {
+    // Helper to calculate GCR %
+    const calculateGCR = (dataset) => {
+      if (!dataset || dataset.length === 0) return 0;
+      const totalPaid = dataset.reduce((sum, d) => sum + d.Paid_Amount, 0);
+      const totalBilled = dataset.reduce((sum, d) => sum + d.Billed_Amount, 0);
+      return totalBilled > 0 ? (totalPaid / totalBilled) * 100 : 0;
+    };
+
+    if (!allChargesData.length) return [];
+
+    // 1. Define "Current Month" range based on the selected "To Date"
+    // Example: If endDate is Nov 30, Current is Nov 1 - Nov 30
+    const currentRef = dayjs(endDate); 
+    const currentStart = currentRef.startOf('month');
+    const currentEnd = currentRef.endOf('month');
+
+    // 2. Define "Last 3 Months" range (The 3 months BEFORE current)
+    // Example: If Current is Nov, Last 3 Months are Aug, Sep, Oct
+    const prev3End = currentStart.subtract(1, 'day'); 
+    const prev3Start = prev3End.subtract(2, 'month').startOf('month');
+
+    // 3. Filter data for Current Month
+    const currentMonthData = allChargesData.filter(d => {
+      const date = dayjs(d.Charge_Entry_Date);
+      return date.isValid() && date.isBetween(currentStart, currentEnd, null, '[]');
+    });
+
+    // 4. Filter data for Previous 3 Months
+    const prev3MonthsData = allChargesData.filter(d => {
+      const date = dayjs(d.Charge_Entry_Date);
+      return date.isValid() && date.isBetween(prev3Start, prev3End, null, '[]');
+    });
+
+    // 5. Calculate values
+    const currentGcr = calculateGCR(currentMonthData);
+    const prevAvgGcr = calculateGCR(prev3MonthsData);
+
+    return [
+      { label: "Last 3 Mos Avg", gcr: +prevAvgGcr.toFixed(2) },
+      { label: "Current Month", gcr: +currentGcr.toFixed(2) },
+    ];
+  }, [allChargesData, endDate]);
+
+  const filteredPayerData = useMemo(() => {
+    const aggregated = filteredCharges.reduce((acc, d) => {
+      const payer = d.Payer_Name || "Unknown";
+      if (!acc[payer]) acc[payer] = { name: payer, payments: 0 };
+      acc[payer].payments += d.Paid_Amount || 0;
+      return acc;
+    }, {});
+    return Object.values(aggregated).filter(payerData => payerData.payments > 0).sort((a, b) => b.payments - a.payments);
+  }, [filteredCharges]);
+
+  // Pagination calculations
+  const payerStartIndex = (payerPage - 1) * payersPerPage;
+  const payerEndIndex = payerStartIndex + payersPerPage;
+  const currentPayers = filteredPayerData.slice(payerStartIndex, payerEndIndex);
+  const totalPages = Math.ceil(filteredCharges.length / rowsPerPage);
+  const indexOfLastRow = currentPage * rowsPerPage;
+  const indexOfFirstRow = indexOfLastRow - rowsPerPage;
+  const currentData = filteredCharges.slice(indexOfFirstRow, indexOfLastRow);
+
+  return (
+    <div className="dashboard-container">
+      {/* Sticky Header */}
+      <div className="sticky-header">
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          {/* BACK BUTTON */}
+          <button onClick={() => navigate("/dashboard")} className="btn-back">
+            ← Back
+          </button>
+
+          <img src="/logo.png" alt="Logo" style={{ height: "40px", objectFit: "contain" }} onError={(e) => e.target.style.display = 'none'} />
+          <div className="header-title">
+            <h2>Gross Collection Rate (GCR)</h2>
+            <p>Deep Dive Analysis</p>
+          </div>
+        </div>
+
+        <div className="control-group">
+          <div className="input-group">
+            <label className="input-label">From Date</label>
+            <input type="date" className="styled-input" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          </div>
+          <div className="input-group">
+            <label className="input-label">To Date</label>
+            <input type="date" className="styled-input" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          </div>
+          <div className="input-group">
+            <label className="input-label">Client</label>
+            <select className="styled-input" value={selectedClient} onChange={(e) => { setSelectedClient(e.target.value); setCurrentPage(1); setPayerPage(1); }}>
+              <option value="all">All</option>
+              <option value="entfw">ENTFW</option>
+              <option value="eca">ECA</option>
+              <option value="soundhealth">SOUND HEALTH</option>
+            </select>
+          </div>
+          <DropdownAvatar />
+        </div>
+      </div>
+
+      <div className="grid-container">
+        
+        {/* Top KPI Cards */}
+        <div className="grid-kpi-cards">
+           <div className="card">
+             <div className="kpi-title">Overall GCR</div>
+             <div className="kpi-value" style={{color: "#10b981"}}>{kpiMetrics.overallGcr}%</div>
+           </div>
+           <div className="card">
+             <div className="kpi-title">Total Payment</div>
+             <div className="kpi-value">{formatCompactNumber(kpiMetrics.totalPaid)}</div>
+           </div>
+           <div className="card">
+             <div className="kpi-title">Total Billed</div>
+             <div className="kpi-value">{formatCompactNumber(kpiMetrics.totalBilled)}</div>
+           </div>
+        </div>
+
+        {/* 3 Charts in One Row */}
+        <div className="grid-3-cols">
+           
+           {/* 1. Monthly GCR Trend */}
+           <div className="card">
+              <h3 className="section-title">Monthly GCR Trend</h3>
+              <div style={{ height: "180px", width: "100%" }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={filteredMonthlyData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#9ca3af" }} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#9ca3af" }} tickFormatter={(t) => `${t}%`} />
+                    <Tooltip contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }} />
+                    
+                    {/* --- UPDATED LEGEND: Smaller Font --- */}
+                    <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: "11px" }} />
+                    
+                    <Line type="monotone" dataKey="actual" stroke="#10b981" strokeWidth={3} name="Actual GCR" dot={{ r: 4 }} />
+                    <Line type="monotone" dataKey="target" stroke="#f43f5e" strokeDasharray="3 3" strokeWidth={2} name="Target GCR" dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+           </div>
+
+           {/* 2. Comparative GCR */}
+           <div className="card">
+              <h3 className="section-title">Comparative GCR</h3>
+              <div style={{ height: "180px", width: "100%" }}>
+                 <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={avgVsLastMonthGcrData} margin={{ top: 10, right: 0, left: -10, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                      <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#6b7280" }} interval={0} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#9ca3af" }} tickFormatter={(t) => `${t}%`} />
+                      <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }} />
+                      <Bar dataKey="gcr" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={40} name="GCR %">
+                         <LabelList dataKey="gcr" position="top" formatter={(v) => `${v}%`} style={{ fontSize: "11px", fontWeight: "bold", fill: "#374151" }} />
+                      </Bar>
+                    </BarChart>
+                 </ResponsiveContainer>
+              </div>
+           </div>
+
+           {/* 3. Payer Breakdown */}
+           <div className="card">
+              <div style={{ marginBottom: "16px" }}>
+                  <h3 className="section-title" style={{marginBottom: 0}}>Top Payers Breakdown</h3>
+              </div>
+              
+              <div style={{ height: "180px", width: "100%", position: "relative" }}>
+                  <button 
+                    disabled={payerPage <= 1} 
+                    onClick={() => setPayerPage(p => Math.max(p - 1, 1))} 
+                    className="chart-nav-btn"
+                    style={{left: "-15px"}}
+                  >
+                    {"<"}
+                  </button>
+
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart layout="vertical" data={currentPayers} margin={{ top: 0, right: 40, left: 20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f3f4f6" />
+                      <XAxis type="number" hide />
+                      <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 11, fill: "#374151" }} axisLine={false} tickLine={false} />
+                      <Tooltip formatter={(val) => `$${val.toLocaleString()}`} contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }} />
+                      <Bar dataKey="payments" fill="#8b5cf6" barSize={12} radius={[0, 4, 4, 0]} name="Payments">
+                          <LabelList dataKey="payments" position="right" formatter={(v) => `${formatCompactNumber(v)}`} style={{ fontSize: "10px", fill: "#6b7280" }} />
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+
+                  <button 
+                    disabled={payerEndIndex >= filteredPayerData.length} 
+                    onClick={() => setPayerPage(p => p + 1)} 
+                    className="chart-nav-btn"
+                    style={{right: "-15px"}}
+                  >
+                    {">"}
+                  </button>
+              </div>
+           </div>
+        </div>
+
+        {/* Detailed Table */}
+        <div className="card">
+           <h3 className="section-title">Claim Level Details</h3>
+           <div className="table-container">
+             <table className="data-table">
+               <thead>
+                 <tr>
+                   {["Claim ID", "Billed Amount", "Paid Amount", "Entry Date", "Payer"].map(h => (
+                     <th key={h}>{h}</th>
+                   ))}
+                 </tr>
+               </thead>
+               <tbody>
+                 {currentData.map((row, index) => (
+                   <tr key={index}>
+                     <td>{row.Claim_ID}</td>
+                     <td>${row.Billed_Amount.toLocaleString()}</td>
+                     <td style={{color: "#10b981", fontWeight: "500"}}>${row.Paid_Amount.toLocaleString()}</td>
+                     <td>{row.Charge_Entry_Date}</td>
+                     <td>{row.Payer_Name}</td>
+                   </tr>
+                 ))}
+               </tbody>
+             </table>
+           </div>
+           
+           <div className="pagination">
+              <button onClick={() => setCurrentPage(p => Math.max(p - 1, 1))} disabled={currentPage === 1} className="btn-page">Previous</button>
+              <span style={{ fontSize: "13px", color: "#6b7280" }}>Page {currentPage} of {totalPages}</span>
+              <button onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))} disabled={currentPage === totalPages} className="btn-page">Next</button>
+           </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
