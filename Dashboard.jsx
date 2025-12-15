@@ -42,6 +42,15 @@ const CLIENT_PREV_KPIS = {
   }
 };
 
+// --- NEW ZERO CONSTANT FOR UPLOADED DATA ---
+const ZERO_KPIS = {
+  totalPayments: 0, totalClaims: 0, gcr: 0, ncr: 0, denialRate: 0,
+  firstPassRate: 0, cleanClaimRate: 0, totalDenials: 0, totalOpenAR: 0,
+  GCR_Target: 0, GCR_Baseline: 0, NCR_Target: 0, NCR_Baseline: 0,
+  CCR_Target: 0, CCR_Baseline: 0, FPR_Target: 0, FPR_Baseline: 0,
+  Denial_Rate_Target: 0, Denial_Rate_Baseline: 0
+};
+
 const getAveragePrevKPIs = () => {
   const clients = Object.values(CLIENT_PREV_KPIS);
   const sum = clients.reduce((acc, c) => ({
@@ -221,9 +230,7 @@ export default function Dashboard() {
   const [charges, setCharges] = useState([]);
   const [denials, setDenials] = useState([]);
   const [openAR, setOpenAR] = useState([]);
-  // --- NEW STATE FOR NCR DATA ---
   const [ncrData, setNcrData] = useState([]);
-  // -----------------------------
   const [aiBotOpen, setAiBotOpen] = useState(false);
   const [agingData, setAgingData] = useState([]);
   const [startDate, setStartDate] = useState(dayjs().subtract(3, "month").format("YYYY-MM-DD"));
@@ -232,9 +239,12 @@ export default function Dashboard() {
   const [selectedMetric, setSelectedMetric] = useState("GCR");
   const [selectedClient, setSelectedClient] = useState("entfw");
   const [uploadError, setUploadError] = useState('');
+  
+  // --- NEW STATE TO TRACK IF DATA IS UPLOADED ---
+  const [isUploadedData, setIsUploadedData] = useState(false);
+  
   const fileInputRef = useRef(null);
 
-  // --- UPDATED PATH GETTER TO INCLUDE NCRDATA ---
   const getClientPaths = (client) => {
     const folders = CLIENT_FOLDERS[client] || [];
     return folders.flatMap(folder => [
@@ -291,7 +301,7 @@ export default function Dashboard() {
     }
     const today = dayjs();
     let start, end;
-     switch (quickFilter) {
+      switch (quickFilter) {
       case QUICK_FILTERS.DAY_PREV_DAY: start = today.subtract(1, "day"); end = today.subtract(1, "day"); break;
       case QUICK_FILTERS.DAY_LAST_MONTH_SAME_DAY: start = today.subtract(1, "month"); end = today.subtract(1, "month"); break;
       case QUICK_FILTERS.DAY_LAST_YEAR_SAME_DAY: start = today.subtract(1, "year"); end = today.subtract(1, "year"); break;
@@ -309,11 +319,9 @@ export default function Dashboard() {
     setEndDate(end.format("YYYY-MM-DD"));
   }, [quickFilter]);
 
-  // --- UPDATED MULTI-FILE UPLOAD HANDLER ---
   const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files);
     
-    // Check for exactly 5 files
     if (files.length !== 5) {
       setUploadError("Please select exactly 5 files: Charges, Denials, OpenAR, Aging, and NCR Data.");
       if (fileInputRef.current) fileInputRef.current.value = ""; 
@@ -393,6 +401,9 @@ export default function Dashboard() {
       setAgingData(newAging);
       setNcrData(newNcrData);
       
+      // --- TRIGGER UPLOADED STATE ---
+      setIsUploadedData(true);
+      
       if (fileInputRef.current) fileInputRef.current.value = "";
 
     } catch (error) {
@@ -402,6 +413,9 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
+    // --- RESET UPLOADED STATE ON CLIENT CHANGE ---
+    setIsUploadedData(false);
+
     const loadData = async () => {
       try {
         const paths = getClientPaths(selectedClient);
@@ -470,13 +484,11 @@ export default function Dashboard() {
       filteredAging: filterByTs(safeAgingData, "ts_dos"),
       prevAging: filterByTsPrev(safeAgingData, "ts_dos"),
 
-      // --- FILTER NCR DATA (Using Charge Entry Date TS_CED) ---
       filteredNCR: filterByTs(safeNcrData, "ts_ced"),
       prevNCR: filterByTsPrev(safeNcrData, "ts_ced"),
     };
   }, [charges, denials, openAR, agingData, ncrData, startDate, endDate]);
 
-  // --- UPDATED CALCULATE KPIS TO ACCEPT NCR DATA ---
   const calculateKPIs = (chargesData, denialsData, openARData, ncrDataInput) => {
     const safeCharges = Array.isArray(chargesData) ? chargesData : [];
     const safeDenials = Array.isArray(denialsData) ? denialsData : [];
@@ -499,22 +511,26 @@ export default function Dashboard() {
     const cleanClaimRate = cleanClaimValues.length > 0 ? cleanClaimValues.reduce((sum, val) => sum + val, 0) / cleanClaimValues.length : 0;
     const totalOpenAR = safeOpenAR.reduce((sum, r) => sum + (r.Open_AR_Amount || 0), 0);
 
-    // --- NCR CALCULATION FROM NEW FILE ---
-    // Using filteredNCR data to calculate NCR
     const ncrPaid = safeNcr.reduce((sum, r) => sum + (r.Paid_Amount || 0), 0);
     const ncrBilled = safeNcr.reduce((sum, r) => sum + (r.Billed_Amount || 0), 0);
     const ncrAdj = safeNcr.reduce((sum, r) => sum + (r.Adjustment_Amount || 0), 0);
     const netBilled = ncrBilled - ncrAdj;
     const ncr = netBilled > 0 ? (ncrPaid / netBilled) * 100 : 0;
-    // -------------------------------------
 
     return { totalPayments, totalClaims, gcr, ncr, denialRate, firstPassRate, cleanClaimRate, totalDenials: deniedCount, totalOpenAR };
   };
 
   const currentKPIs = calculateKPIs(filteredCharges, filteredDenials, filteredOpenAR, filteredNCR);
+  
+  // --- UPDATED PREV KPIS SELECTION LOGIC ---
   let prevKPIs;
-  if (selectedClient === "all") prevKPIs = getAveragePrevKPIs();
-  else prevKPIs = CLIENT_PREV_KPIS[selectedClient] || CLIENT_PREV_KPIS["entfw"];
+  if (isUploadedData) {
+      prevKPIs = ZERO_KPIS; // Force 0 if uploaded
+  } else if (selectedClient === "all") {
+      prevKPIs = getAveragePrevKPIs();
+  } else {
+      prevKPIs = CLIENT_PREV_KPIS[selectedClient] || CLIENT_PREV_KPIS["entfw"];
+  }
 
   const trend = (current, previous, isIncreaseGood = true, decimals = 2) => {
     if (previous === 0 || !isFinite(previous)) return { percentChange: current.toFixed(decimals), arrow: "▲", color: "#6b7280", previousValue: "0", isPositive: true };
@@ -546,7 +562,6 @@ export default function Dashboard() {
       return acc;
     }, {})).map(d => ({ value: fn(d.vals), month: d.month }));
 
-  // --- HELPER FOR NCR TREND ---
   const getMonthlyNCRTrend = (fn) => Object.values(filteredNCR.reduce((acc, r) => {
     const month = r.month || "Unknown";
     if (!acc[month]) acc[month] = { vals: [], month };
@@ -580,7 +595,6 @@ export default function Dashboard() {
 
   const kpiSparklines = useMemo(() => ({
     gcr: getMonthlyChargesTrend(rows => { const p = rows.reduce((a, r) => a + (r.Paid_Amount || 0), 0); const b = rows.reduce((a, r) => a + (r.Billed_Amount || 0), 0); return b > 0 ? (p / b) * 100 : 0; }),
-    // --- UPDATED NCR SPARKLINE TO USE NCR DATA ---
     ncr: getMonthlyNCRTrend(rows => { const p = rows.reduce((a, r) => a + (r.Paid_Amount || 0), 0); const al = rows.reduce((a, r) => a + ((r.Billed_Amount || 0) - (r.Adjustment_Amount || 0)), 0); return al > 0 ? (p / al) * 100 : 0; }),
     denialRate: getMonthlyDenialTrend(),
     firstPassRate: getMonthlyFPRTrend(),
@@ -598,7 +612,6 @@ export default function Dashboard() {
   const mainChartData = useMemo(() => {
     const map = {};
     
-    // Process Charges (GCR, CCR)
     filteredCharges.forEach(r => {
         const postedDate = dayjs(r.Charge_Entry_Date);
         if (!postedDate.isValid()) return;
@@ -608,7 +621,6 @@ export default function Dashboard() {
             paidSum: 0, billedSum: 0, adjustmentSum: 0, ccrSum: 0, ccrCount: 0, count: 0, 
             date: postedDate.startOf("month"), 
             fprTrueCount: 0, fprDenialCount: 0, deniedCount: 0, totalDenialRows: 0,
-            // NCR specific accumulators
             ncrPaid: 0, ncrBilled: 0, ncrAdj: 0,
             target: Number(prevKPIs?.[`${selectedMetric.replace(" ", "_")}_Target`] || 0), 
             baseline: Number(prevKPIs?.[`${selectedMetric.replace(" ", "_")}_Baseline`] || 0) 
@@ -626,13 +638,11 @@ export default function Dashboard() {
         }
     });
 
-    // --- PROCESS NCR DATA separately for NCR metric ---
     filteredNCR.forEach(r => {
         const postedDate = dayjs(r.Charge_Entry_Date);
         if (!postedDate.isValid()) return;
         const month = postedDate.format("MMM YY");
         
-        // Initialize if month missing
         if (!map[month]) map[month] = { 
             paidSum: 0, billedSum: 0, adjustmentSum: 0, ccrSum: 0, ccrCount: 0, count: 0, 
             date: postedDate.startOf("month"), 
@@ -647,7 +657,6 @@ export default function Dashboard() {
         map[month].ncrAdj += r.Adjustment_Amount || 0;
     });
 
-    // Process Denials
     filteredDenials.forEach(r => {
           const d = dayjs(r.Date_of_Service); if(!d.isValid()) return; const m = d.format("MMM YY");
           
@@ -675,7 +684,6 @@ export default function Dashboard() {
     let chartData = Object.entries(map).sort((a, b) => a[1].date.unix() - b[1].date.unix()).map(([month, obj]) => {
         let avgVal = 0;
         if (selectedMetric === "GCR" && obj.billedSum > 0) avgVal = (obj.paidSum / obj.billedSum) * 100;
-        // --- UPDATE NCR CHART CALCULATION ---
         else if (selectedMetric === "NCR") {
              const net = obj.ncrBilled - obj.ncrAdj;
              if (net > 0) avgVal = (obj.ncrPaid / net) * 100;
@@ -1032,7 +1040,7 @@ export default function Dashboard() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
                  <div style={styles.kpiTitle}>AR Aging Buckets</div>
                  <div style={{ fontSize: "11px", fontWeight: "600", color: "#6b7280" }}>
-                    Till {dayjs(endDate).format("MMM YYYY")}
+                   Till {dayjs(endDate).format("MMM YYYY")}
                  </div>
               </div>
               <div style={{ display: "flex", height: "200px", alignItems: "center" }}>
