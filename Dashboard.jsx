@@ -10,39 +10,50 @@ import {
   PieChart, Pie, Cell, AreaChart, Area, BarChart, Bar, ReferenceLine,
 } from "recharts";
 
+// --- CONFIGURATION ---
+// 1. Set your backend URL here
+const API_BASE_URL = "http://localhost:5000"; // Change this to your actual API URL
+
+// 2. Map Client Dropdown IDs to your SQL Database Names
+const CLIENT_DB_MAP = {
+  "entfw": "ENTFW_DB",
+  "eca": "ECA_DB",
+  "soundhealth": "SoundHealth_DB",
+  "piedmont": "Piedmont_DB"
+};
+
 // --- LOGIC CONSTANTS ---
 const CLIENT_PREV_KPIS = {
   "entfw": {
     totalPayments: 95000, totalClaims: 9469, gcr: 34.50, ncr: 97.00, denialRate: 0.30,
-    firstPassRate: 0.00, cleanClaimRate: 95.00, totalDenials: 55, totalOpenAR: 320000,
-    GCR_Target: 32.5, GCR_Baseline: 34.5, NCR_Target: 45.2, NCR_Baseline: 97.0,
-    CCR_Target: 91.2, CCR_Baseline: 95.0, FPR_Target: 95.0, FPR_Baseline: 85.0,
-    Denial_Rate_Target: 0.3, Denial_Rate_Baseline: 0.30
+    firstPassRate: 80.00, cleanClaimRate: 95.00, totalDenials: 55, totalOpenAR: 320000,
+    GCR_Target: 0.0, GCR_Baseline: 34.5, NCR_Target: 0.0, NCR_Baseline: 97.0,
+    CCR_Target: 0.0, CCR_Baseline: 95.0, FPR_Target: 0.0, FPR_Baseline: 80.0,
+    Denial_Rate_Target: 0.0, Denial_Rate_Baseline: 0.30
   },
   "eca": {
-    totalPayments: 120000, totalClaims: 510, gcr: 38.1, ncr: 49.7, denialRate: 10.4,
-    firstPassRate: 82.1, cleanClaimRate: 89.5, totalDenials: 48, totalOpenAR: 410000,
-    GCR_Target: 38.1, GCR_Baseline: 38.1, NCR_Target: 49.7, NCR_Baseline: 49.7,
-    CCR_Target: 89.5, CCR_Baseline: 89.5, FPR_Target: 82.1, FPR_Baseline: 82.1,
-    Denial_Rate_Target: 10.4, Denial_Rate_Baseline: 10.4
+    totalPayments: 120000, totalClaims: 3897, gcr: 47.00, ncr: 98.00, denialRate: 0.23,
+    firstPassRate: 76.50, cleanClaimRate: 96.00, totalDenials: 48, totalOpenAR: 410000,
+    GCR_Target: 0.0, GCR_Baseline: 47.00, NCR_Target: 0.00, NCR_Baseline: 98.0,
+    CCR_Target: 0.0, CCR_Baseline: 96.0, FPR_Target: 0.0, FPR_Baseline: 76.5,
+    Denial_Rate_Target: 0.0, Denial_Rate_Baseline: 0.23
   },
   "soundhealth": {
-    totalPayments: 78000, totalClaims: 9367, gcr: 24.00, ncr: 93.00, denialRate: 0.00,
-    firstPassRate: 0.00, cleanClaimRate: 98.00, totalDenials: 62, totalOpenAR: 275000,
-    GCR_Target: 29.9, GCR_Baseline: 24.0, NCR_Target: 41.3, NCR_Baseline: 93.0,
-    CCR_Target: 87.1, CCR_Baseline: 98.0, FPR_Target: 76.3, FPR_Baseline: 0.0,
-    Denial_Rate_Target: 14.9, Denial_Rate_Baseline: 0.0
+    totalPayments: 78000, totalClaims: 9367, gcr: 24.00, ncr: 93.00, denialRate: 0.9,
+    firstPassRate: 87.85, cleanClaimRate: 98.00, totalDenials: 62, totalOpenAR: 275000,
+    GCR_Target: 0.0, GCR_Baseline: 24.0, NCR_Target: 0.0, NCR_Baseline: 93.0,
+    CCR_Target: 0.0, CCR_Baseline: 98.0, FPR_Target: 0.0, FPR_Baseline: 87.8,
+    Denial_Rate_Target: 0.0, Denial_Rate_Baseline: 0.9
   },
   "piedmont": {
-    totalPayments: 142000, totalClaims: 600, gcr: 40.4, ncr: 53.0, denialRate: 9.1,
-    firstPassRate: 85.5, cleanClaimRate: 93.2, totalDenials: 41, totalOpenAR: 520000,
-    GCR_Target: 40.4, GCR_Baseline: 40.4, NCR_Target: 53.0, NCR_Baseline: 53.0,
-    CCR_Target: 93.2, CCR_Baseline: 93.2, FPR_Target: 85.5, FPR_Baseline: 85.5,
-    Denial_Rate_Target: 9.1, Denial_Rate_Baseline: 9.1
+    totalPayments: 142000, totalClaims: 563, gcr: 46.00, ncr: 85.00, denialRate: 0.05,
+    firstPassRate: 71.30, cleanClaimRate: 93.00, totalDenials: 41, totalOpenAR: 520000,
+    GCR_Target: 0.0, GCR_Baseline: 46.0, NCR_Target: 0.0, NCR_Baseline: 85.0,
+    CCR_Target: 0.0, CCR_Baseline: 93.0, FPR_Target: 0.0, FPR_Baseline: 71.30,
+    Denial_Rate_Target: 0.0, Denial_Rate_Baseline: 0.05
   }
 };
 
-// --- NEW ZERO CONSTANT FOR UPLOADED DATA ---
 const ZERO_KPIS = {
   totalPayments: 0, totalClaims: 0, gcr: 0, ncr: 0, denialRate: 0,
   firstPassRate: 0, cleanClaimRate: 0, totalDenials: 0, totalOpenAR: 0,
@@ -116,12 +127,6 @@ const QUICK_FILTERS = {
   YEAR_PREV_YEAR_3: "year_prev_3",
 };
 
-const CLIENT_FOLDERS = {
-  entfw: ["entfw"],
-  eca: ["eca"],
-  soundhealth: ["soundhealth"],
-};
-
 dayjs.extend(isBetween);
 
 // --- HELPER: Compact Number Formatter ---
@@ -132,6 +137,45 @@ const formatCompactNumber = (number) => {
     return (number / 1000).toFixed(1) + "K";
   }
   return number.toString();
+};
+
+// --- HELPER: Safe Number Cleaning for API or CSV ---
+const cleanNumber = (val) => {
+  if (typeof val === 'number') return val;
+  if (!val) return 0;
+  return Number(String(val).replace(/,/g, "").replace(/"/g, ""));
+};
+
+// --- HELPER: Normalize Data Row (Used for both API and CSV) ---
+const normalizeRow = (r) => {
+  const dos = r.Date_of_Service ? dayjs(r.Date_of_Service) : null;
+  const ced = r.Charge_Entry_Date ? dayjs(r.Charge_Entry_Date) : null;
+  return {
+    ...r,
+    month: r.month || (dos ? dos.format("MMM YY") : (ced ? ced.format("MMM YY") : "")),
+    Billed_Amount: cleanNumber(r.Billed_Amount),
+    Paid_Amount: cleanNumber(r.Paid_Amount),
+    Adjustment_Amount: cleanNumber(r.Adjustment_Amount),
+    Open_AR_Amount: cleanNumber(r.Open_AR_Amount || r.apenaramount),
+    GCR_Target: cleanNumber(r.GCR_Target),
+    GCR_Baseline: cleanNumber(r.GCR_Baseline),
+    Is_First_Pass_Resolution: (() => {
+      const val = r.Is_First_Pass_Resolution || r.First_Pass;
+      if (!val) return false;
+      const strVal = String(val).toLowerCase().trim();
+      return ["true", "yes", "y", "1"].includes(strVal);
+    })(),
+    Is_Clean_Claim: cleanNumber(r.Is_Clean_Claim || 0),
+    Date_of_Service: r.Date_of_Service || null,
+    Charge_Entry_Date: r.Charge_Entry_Date || null,
+    Claim_Submission_Date: r.Claim_Submission_Date || null,
+    aging: cleanNumber(r.aging),
+    Aging_Amount: cleanNumber(r.Aging_Amount),
+    ar_days: cleanNumber(r.ar_days),
+    visit: cleanNumber(r.visit),
+    ts_dos: dos ? dos.valueOf() : 0,
+    ts_ced: ced ? ced.valueOf() : 0
+  };
 };
 
 function DropdownAvatar() {
@@ -148,7 +192,7 @@ function DropdownAvatar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
   const handleLogout = () => { navigate("/"); };
-  
+
   return (
     <div style={{ position: "relative" }} ref={menuRef}>
       <button
@@ -161,7 +205,7 @@ function DropdownAvatar() {
           cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center"
         }}
       >
-        JD
+        J
       </button>
       {open && (
         <div style={{
@@ -178,54 +222,6 @@ function DropdownAvatar() {
   );
 }
 
-// Helper to parse CSV from URL (for initial load)
-const parseCSV = async (filePath) => {
-    try {
-        const res = await fetch(filePath);
-        if (!res.ok) { return []; }
-        const text = await res.text();
-        return new Promise((resolve, reject) => {
-            Papa.parse(text, {
-                header: true, dynamicTyping: false, skipEmptyLines: true,
-                complete: (results) => {
-                    const normalized = results.data.map((r) => {
-                        const dos = r.Date_of_Service ? dayjs(r.Date_of_Service) : null;
-                        const ced = r.Charge_Entry_Date ? dayjs(r.Charge_Entry_Date) : null;
-                        return {
-                            ...r,
-                            month: r.month || (dos ? dos.format("MMM YY") : (ced ? ced.format("MMM YY") : "")),
-                            Billed_Amount: Number(String(r.Billed_Amount || "0").replace(/,/g, "").replace(/"/g, "")),
-                            Paid_Amount: Number(String(r.Paid_Amount || "0").replace(/,/g, "").replace(/"/g, "")),
-                            Adjustment_Amount: Number(String(r.Adjustment_Amount || "0").replace(/,/g, "").replace(/"/g, "")),
-                            Open_AR_Amount: Number(String(r.Open_AR_Amount || r.apenaramount || "0").replace(/,/g, "").replace(/"/g, "")),
-                            GCR_Target: Number(String(r.GCR_Target || "0").replace(/,/g, "").replace(/"/g, "")),
-                            GCR_Baseline: Number(String(r.GCR_Baseline || "0").replace(/,/g, "").replace(/"/g, "")),
-                            Is_First_Pass_Resolution: (() => {
-                                const val = r.Is_First_Pass_Resolution || r.First_Pass; 
-                                if (!val) return false;
-                                const strVal = String(val).toLowerCase().trim();
-                                return ["true", "yes", "y", "1"].includes(strVal);
-                            })(),
-                            Is_Clean_Claim: Number(r.Is_Clean_Claim || 0),
-                            Date_of_Service: r.Date_of_Service || null,
-                            Charge_Entry_Date: r.Charge_Entry_Date || null,
-                            Claim_Submission_Date: r.Claim_Submission_Date || null,
-                            aging: Number(r.aging || 0),
-                            Aging_Amount: Number(r.Aging_Amount || "0"),
-                            ar_days: Number(r.ar_days || 0),
-                            visit: Number(r.visit || 0),
-                            ts_dos: dos ? dos.valueOf() : 0,
-                            ts_ced: ced ? ced.valueOf() : 0
-                        };
-                    });
-                    resolve(normalized);
-                },
-                error: (error) => reject(error)
-            });
-        });
-    } catch (error) { return []; }
-};
-
 export default function Dashboard() {
   const [charges, setCharges] = useState([]);
   const [denials, setDenials] = useState([]);
@@ -237,20 +233,10 @@ export default function Dashboard() {
   const [endDate, setEndDate] = useState(dayjs().format("YYYY-MM-DD"));
   const [quickFilter, setQuickFilter] = useState(QUICK_FILTERS.NONE);
   const [selectedMetric, setSelectedMetric] = useState("GCR");
-  const [selectedClient, setSelectedClient] = useState("entfw");
+  const [selectedClient, setSelectedClient] = useState("eca");
   const [uploadError, setUploadError] = useState('');
-  
-  // --- NEW STATE TO TRACK IF DATA IS UPLOADED ---
   const [isUploadedData, setIsUploadedData] = useState(false);
-  
   const fileInputRef = useRef(null);
-
-  const getClientPaths = (client) => {
-    const folders = CLIENT_FOLDERS[client] || [];
-    return folders.flatMap(folder => [
-      `/${folder}/charges.csv`, `/${folder}/denial.csv`, `/${folder}/openar.csv`, `/${folder}/aging.csv`, `/${folder}/ncrdata.csv`
-    ]);
-  };
 
   function AiBotPopup({ open, onClose }) {
     const [chatInput, setChatInput] = useState("");
@@ -272,7 +258,7 @@ export default function Dashboard() {
     return open ? (
       <div style={{ position: "fixed", bottom: 88, right: 24, width: 360, height: 500, background: "#fff", borderRadius: "16px", boxShadow: "0 12px 24px rgba(0,0,0,0.15)", zIndex: 1300, display: "flex", flexDirection: "column", border: "1px solid #e5e7eb", overflow: "hidden" }}>
         <div style={{ padding: "16px", background: "#2563eb", color: "#fff", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{fontWeight: 600}}>Jorie AI Assistant</span>
+          <span style={{ fontWeight: 600 }}>Jorie AI Assistant</span>
           <button onClick={onClose} style={{ background: "none", border: "none", color: "#fff", fontSize: "20px", cursor: "pointer" }}>×</button>
         </div>
         <div style={{ flex: 1, padding: "16px", overflowY: "auto", background: "#f9fafb" }}>
@@ -293,7 +279,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (quickFilter === QUICK_FILTERS.NONE) {
-      const lastDayOfLastMonth = dayjs().subtract(1, 'month').endOf('month');
+      const lastDayOfLastMonth = dayjs().subtract(2, 'month').endOf('month');
       const startOfThreeMonthsAgo = lastDayOfLastMonth.subtract(2, 'month').startOf('month');
       setStartDate(startOfThreeMonthsAgo.format("YYYY-MM-DD"));
       setEndDate(lastDayOfLastMonth.format("YYYY-MM-DD"));
@@ -301,7 +287,7 @@ export default function Dashboard() {
     }
     const today = dayjs();
     let start, end;
-      switch (quickFilter) {
+    switch (quickFilter) {
       case QUICK_FILTERS.DAY_PREV_DAY: start = today.subtract(1, "day"); end = today.subtract(1, "day"); break;
       case QUICK_FILTERS.DAY_LAST_MONTH_SAME_DAY: start = today.subtract(1, "month"); end = today.subtract(1, "month"); break;
       case QUICK_FILTERS.DAY_LAST_YEAR_SAME_DAY: start = today.subtract(1, "year"); end = today.subtract(1, "year"); break;
@@ -319,12 +305,13 @@ export default function Dashboard() {
     setEndDate(end.format("YYYY-MM-DD"));
   }, [quickFilter]);
 
+  // --- CSV UPLOAD HANDLER (Modified to use new normalizeRow) ---
   const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files);
-    
+
     if (files.length !== 5) {
-      setUploadError("Please select exactly 5 files: Charges, Denials, OpenAR, Aging, and NCR Data.");
-      if (fileInputRef.current) fileInputRef.current.value = ""; 
+      setUploadError("Please select 5 files: Charges, Denials, OpenAR, Aging, and NCR Data.");
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
     setUploadError("");
@@ -336,36 +323,7 @@ export default function Dashboard() {
           dynamicTyping: false,
           skipEmptyLines: true,
           complete: (results) => {
-            const normalized = results.data.map((r) => {
-              const dos = r.Date_of_Service ? dayjs(r.Date_of_Service) : null;
-              const ced = r.Charge_Entry_Date ? dayjs(r.Charge_Entry_Date) : null;
-              return {
-                ...r,
-                month: r.month || (dos ? dos.format("MMM YY") : (ced ? ced.format("MMM YY") : "")),
-                Billed_Amount: Number(String(r.Billed_Amount || "0").replace(/,/g, "").replace(/"/g, "")),
-                Paid_Amount: Number(String(r.Paid_Amount || "0").replace(/,/g, "").replace(/"/g, "")),
-                Adjustment_Amount: Number(String(r.Adjustment_Amount || "0").replace(/,/g, "").replace(/"/g, "")),
-                Open_AR_Amount: Number(String(r.Open_AR_Amount || r.apenaramount || "0").replace(/,/g, "").replace(/"/g, "")),
-                GCR_Target: Number(String(r.GCR_Target || "0").replace(/,/g, "").replace(/"/g, "")),
-                GCR_Baseline: Number(String(r.GCR_Baseline || "0").replace(/,/g, "").replace(/"/g, "")),
-                Is_First_Pass_Resolution: (() => {
-                    const val = r.Is_First_Pass_Resolution || r.First_Pass;
-                    if (!val) return false;
-                    const strVal = String(val).toLowerCase().trim();
-                    return ["true", "yes", "y", "1"].includes(strVal);
-                })(),
-                Is_Clean_Claim: Number(r.Is_Clean_Claim || 0),
-                Date_of_Service: r.Date_of_Service || null,
-                Charge_Entry_Date: r.Charge_Entry_Date || null,
-                Claim_Submission_Date: r.Claim_Submission_Date || null,
-                aging: Number(r.aging || 0),
-                Aging_Amount: Number(r.Aging_Amount || "0"),
-                ar_days: Number(r.ar_days || 0),
-                visit: Number(r.visit || 0),
-                ts_dos: dos ? dos.valueOf() : 0,
-                ts_ced: ced ? ced.valueOf() : 0
-              };
-            });
+            const normalized = results.data.map(normalizeRow); // USE HELPER
             resolve({ name: file.name.toLowerCase(), data: normalized });
           },
         });
@@ -374,25 +332,14 @@ export default function Dashboard() {
 
     try {
       const parsedResults = await Promise.all(files.map(processFile));
-
-      let newCharges = [];
-      let newDenials = [];
-      let newOpenAR = [];
-      let newAging = [];
-      let newNcrData = [];
+      let newCharges = [], newDenials = [], newOpenAR = [], newAging = [], newNcrData = [];
 
       parsedResults.forEach(({ name, data }) => {
-        if (name.includes("charge")) {
-          newCharges = data;
-        } else if (name.includes("denial")) {
-          newDenials = data;
-        } else if (name.includes("openar") || name.includes("open") || name.includes("ar") && !name.includes("aging")) {
-          newOpenAR = data;
-        } else if (name.includes("aging")) {
-          newAging = data;
-        } else if (name.includes("ncr")) {
-          newNcrData = data;
-        }
+        if (name.includes("charge")) newCharges = data;
+        else if (name.includes("denial")) newDenials = data;
+        else if (name.includes("openar") || (name.includes("open") && name.includes("ar") && !name.includes("aging"))) newOpenAR = data;
+        else if (name.includes("aging")) newAging = data;
+        else if (name.includes("ncr")) newNcrData = data;
       });
 
       setCharges(newCharges);
@@ -400,10 +347,7 @@ export default function Dashboard() {
       setOpenAR(newOpenAR);
       setAgingData(newAging);
       setNcrData(newNcrData);
-      
-      // --- TRIGGER UPLOADED STATE ---
       setIsUploadedData(true);
-      
       if (fileInputRef.current) fileInputRef.current.value = "";
 
     } catch (error) {
@@ -412,30 +356,51 @@ export default function Dashboard() {
     }
   };
 
+  // --- API DATA FETCHING ---
   useEffect(() => {
-    // --- RESET UPLOADED STATE ON CLIENT CHANGE ---
-    setIsUploadedData(false);
+    // If user uploaded a CSV, do not overwrite with API data
+    if (isUploadedData) return;
 
-    const loadData = async () => {
+    const fetchFromApi = async () => {
       try {
-        const paths = getClientPaths(selectedClient);
-        const filePromises = paths.map(path => parseCSV(path));
-        const allData = await Promise.all(filePromises);
-        let allCharges = [], allDenials = [], allOpenAR = [], allAging = [], allNcr = [];
-        
-        paths.forEach((path, index) => {
-          const data = allData[index] || [];
-          if (path.includes("charges.csv")) allCharges = [...allCharges, ...data];
-          else if (path.includes("denial.csv")) allDenials = [...allDenials, ...data];
-          else if (path.includes("openar.csv")) allOpenAR = [...allOpenAR, ...data];
-          else if (path.includes("aging.csv")) allAging = [...allAging, ...data];
-          else if (path.includes("ncrdata.csv")) allNcr = [...allNcr, ...data];
-        });
-        setCharges(allCharges); setDenials(allDenials); setOpenAR(allOpenAR); setAgingData(allAging); setNcrData(allNcr);
-      } catch (err) { console.error("Error loading CSV:", err); }
+        // 1. Get the DB name based on the dropdown selection
+        const dbName = CLIENT_DB_MAP[selectedClient];
+        if (!dbName) {
+          console.warn(`No database mapped for client: ${selectedClient}`);
+          return;
+        }
+
+        // 2. Fetch data from endpoints: [url]/api/[dbname]/[table]
+        // Assuming your tables are named 'charges', 'denials', 'openar', 'aging', 'ncrdata'
+        const [chargesRes, denialRes, openArRes, agingRes, ncrRes] = await Promise.all([
+          axios.get(`${API_BASE_URL}/api/${dbName}/charges`),
+          axios.get(`${API_BASE_URL}/api/${dbName}/denials`), // Check if table is 'denial' or 'denials' in your SSMS
+          axios.get(`${API_BASE_URL}/api/${dbName}/openar`),
+          axios.get(`${API_BASE_URL}/api/${dbName}/aging`),
+          axios.get(`${API_BASE_URL}/api/${dbName}/ncrdata`)
+        ]);
+
+        // 3. Normalize Data (ensure API JSON matches expected format)
+        // If API returns { data: [...] } structure, use response.data.data, else use response.data
+        const rawCharges = Array.isArray(chargesRes.data) ? chargesRes.data : [];
+        const rawDenials = Array.isArray(denialRes.data) ? denialRes.data : [];
+        const rawOpenAR = Array.isArray(openArRes.data) ? openArRes.data : [];
+        const rawAging = Array.isArray(agingRes.data) ? agingRes.data : [];
+        const rawNcr = Array.isArray(ncrRes.data) ? ncrRes.data : [];
+
+        setCharges(rawCharges.map(normalizeRow));
+        setDenials(rawDenials.map(normalizeRow));
+        setOpenAR(rawOpenAR.map(normalizeRow));
+        setAgingData(rawAging.map(normalizeRow));
+        setNcrData(rawNcr.map(normalizeRow));
+
+      } catch (err) {
+        console.error("Error fetching from SSMS API:", err);
+      }
     };
-    loadData();
-  }, [selectedClient]);
+
+    fetchFromApi();
+  }, [selectedClient, isUploadedData]);
 
   const { filteredCharges, filteredDenials, filteredOpenAR, filteredAging, filteredNCR, prevCharges, prevDenials, prevOpenAR, prevNCR } = useMemo(() => {
     const safeCharges = Array.isArray(charges) ? charges : [];
@@ -443,7 +408,7 @@ export default function Dashboard() {
     const safeOpenAR = Array.isArray(openAR) ? openAR : [];
     const safeAgingData = Array.isArray(agingData) ? agingData : [];
     const safeNcrData = Array.isArray(ncrData) ? ncrData : [];
-    
+
     const startObj = dayjs(startDate);
     const endObj = dayjs(endDate);
     const startTs = startObj.valueOf();
@@ -451,7 +416,7 @@ export default function Dashboard() {
 
     let durationDays = endObj.diff(startObj, 'day') + 1;
     if (durationDays <= 1) durationDays = 1;
-    
+
     let prevEndObj = startObj.subtract(1, 'day');
     let prevStartObj = prevEndObj.clone().subtract(durationDays - 1, 'day');
     if (!prevStartObj.isValid() || !prevEndObj.isValid()) {
@@ -462,25 +427,25 @@ export default function Dashboard() {
     const prevEndTs = prevEndObj.valueOf();
 
     const filterByTs = (arr, tsKey) => arr.filter(r => {
-        const ts = r[tsKey];
-        return ts >= startTs && ts <= endTs;
+      const ts = r[tsKey];
+      return ts >= startTs && ts <= endTs;
     });
 
     const filterByTsPrev = (arr, tsKey) => arr.filter(r => {
-        const ts = r[tsKey];
-        return ts >= prevStartTs && ts <= prevEndTs;
+      const ts = r[tsKey];
+      return ts >= prevStartTs && ts <= prevEndTs;
     });
 
     return {
       filteredCharges: filterByTs(safeCharges, "ts_ced"),
       prevCharges: filterByTsPrev(safeCharges, "ts_ced"),
-      
+
       filteredDenials: filterByTs(safeDenials, "ts_dos"),
       prevDenials: filterByTsPrev(safeDenials, "ts_dos"),
-      
+
       filteredOpenAR: filterByTs(safeOpenAR, "ts_dos"),
       prevOpenAR: filterByTsPrev(safeOpenAR, "ts_dos"),
-      
+
       filteredAging: filterByTs(safeAgingData, "ts_dos"),
       prevAging: filterByTsPrev(safeAgingData, "ts_dos"),
 
@@ -502,10 +467,10 @@ export default function Dashboard() {
     const deniedCount = safeDenials.filter(r => (r.Claim_Status || "").toLowerCase().trim() === "denied").length;
     const totalDenialRows = safeDenials.length;
     const denialRate = totalDenialRows > 0 ? (deniedCount / totalDenialRows) * 100 : 0;
-    
+
     const firstPassClaimsCount = safeDenials.filter(r => r.Is_First_Pass_Resolution).length;
     const firstPassRate = totalDenialRows > 0 ? (firstPassClaimsCount / totalDenialRows) * 100 : 0;
-    
+
     const cleanClaimValues = safeCharges.map(r => Number(r.Is_Clean_Claim || 0)).filter(val => !isNaN(val) && val >= 0 && val <= 100);
     const gcr = totalBilled === 0 ? 0 : (totalPayments / totalBilled) * 100;
     const cleanClaimRate = cleanClaimValues.length > 0 ? cleanClaimValues.reduce((sum, val) => sum + val, 0) / cleanClaimValues.length : 0;
@@ -519,30 +484,28 @@ export default function Dashboard() {
 
     return { totalPayments, totalClaims, gcr, ncr, denialRate, firstPassRate, cleanClaimRate, totalDenials: deniedCount, totalOpenAR };
   };
-
   const currentKPIs = calculateKPIs(filteredCharges, filteredDenials, filteredOpenAR, filteredNCR);
-  
-  // --- UPDATED PREV KPIS SELECTION LOGIC ---
+
   let prevKPIs;
   if (isUploadedData) {
-      prevKPIs = ZERO_KPIS; // Force 0 if uploaded
+    prevKPIs = ZERO_KPIS;
   } else if (selectedClient === "all") {
-      prevKPIs = getAveragePrevKPIs();
+    prevKPIs = getAveragePrevKPIs();
   } else {
-      prevKPIs = CLIENT_PREV_KPIS[selectedClient] || CLIENT_PREV_KPIS["entfw"];
+    prevKPIs = CLIENT_PREV_KPIS[selectedClient] || CLIENT_PREV_KPIS["eca"];
   }
 
   const trend = (current, previous, isIncreaseGood = true, decimals = 2) => {
     if (previous === 0 || !isFinite(previous)) return { percentChange: current.toFixed(decimals), arrow: "▲", color: "#6b7280", previousValue: "0", isPositive: true };
     const diff = current - previous;
     const isPositive = diff >= 0;
-    const color = isPositive === isIncreaseGood ? "#10b981" : "#ef4444"; 
-    return { 
-        percentChange: Math.abs(diff).toFixed(decimals), 
-        arrow: isPositive ? "▲" : "▼", 
-        color, 
-        previousValue: previous.toFixed(decimals), 
-        isPositive 
+    const color = isPositive === isIncreaseGood ? "#10b981" : "#ef4444";
+    return {
+      percentChange: Math.abs(diff).toFixed(decimals),
+      arrow: isPositive ? "▲" : "▼",
+      color,
+      previousValue: previous.toFixed(decimals),
+      isPositive
     };
   };
 
@@ -556,11 +519,11 @@ export default function Dashboard() {
   };
 
   const getMonthlyChargesTrend = (fn) => Object.values(filteredCharges.reduce((acc, r) => {
-      const month = r.month || "Unknown";
-      if (!acc[month]) acc[month] = { vals: [], month };
-      acc[month].vals.push(r);
-      return acc;
-    }, {})).map(d => ({ value: fn(d.vals), month: d.month }));
+    const month = r.month || "Unknown";
+    if (!acc[month]) acc[month] = { vals: [], month };
+    acc[month].vals.push(r);
+    return acc;
+  }, {})).map(d => ({ value: fn(d.vals), month: d.month }));
 
   const getMonthlyNCRTrend = (fn) => Object.values(filteredNCR.reduce((acc, r) => {
     const month = r.month || "Unknown";
@@ -582,15 +545,15 @@ export default function Dashboard() {
   };
 
   const getMonthlyFPRTrend = () => {
-      if (filteredDenials.length === 0) return [];
-      const monthlyData = filteredDenials.reduce((acc, r) => {
-        const month = dayjs(r.Date_of_Service).format("MMM YY");
-        if (!acc[month]) acc[month] = { trueCount: 0, totalCount: 0 };
-        if (r.Is_First_Pass_Resolution) acc[month].trueCount++;
-        acc[month].totalCount++;
-        return acc;
-      }, {});
-      return Object.keys(monthlyData).map(month => ({ value: monthlyData[month].totalCount > 0 ? (monthlyData[month].trueCount / monthlyData[month].totalCount) * 100 : 0, month })).sort((a, b) => dayjs(a.month, "MMM YY").valueOf() - dayjs(b.month, "MMM YY").valueOf());
+    if (filteredDenials.length === 0) return [];
+    const monthlyData = filteredDenials.reduce((acc, r) => {
+      const month = dayjs(r.Date_of_Service).format("MMM YY");
+      if (!acc[month]) acc[month] = { trueCount: 0, totalCount: 0 };
+      if (r.Is_First_Pass_Resolution) acc[month].trueCount++;
+      acc[month].totalCount++;
+      return acc;
+    }, {});
+    return Object.keys(monthlyData).map(month => ({ value: monthlyData[month].totalCount > 0 ? (monthlyData[month].trueCount / monthlyData[month].totalCount) * 100 : 0, month })).sort((a, b) => dayjs(a.month, "MMM YY").valueOf() - dayjs(b.month, "MMM YY").valueOf());
   };
 
   const kpiSparklines = useMemo(() => ({
@@ -603,104 +566,104 @@ export default function Dashboard() {
   }), [filteredCharges, filteredDenials, filteredNCR]);
 
   const calculateLag = (data, dateKey1, dateKey2) => {
-      const diffs = data.map(r => { const d1 = dayjs(r[dateKey1]); const d2 = dayjs(r[dateKey2]); return (d1.isValid() && d2.isValid()) ? d2.diff(d1, "day") : null; }).filter(d => d !== null && !isNaN(d));
-      return diffs.length === 0 ? 0 : Math.round(diffs.reduce((a, b) => a + b, 0) / diffs.length);
+    const diffs = data.map(r => { const d1 = dayjs(r[dateKey1]); const d2 = dayjs(r[dateKey2]); return (d1.isValid() && d2.isValid()) ? d2.diff(d1, "day") : null; }).filter(d => d !== null && !isNaN(d));
+    return diffs.length === 0 ? 0 : Math.round(diffs.reduce((a, b) => a + b, 0) / diffs.length);
   };
   const chargeLag = calculateLag(filteredCharges, "Date_of_Service", "Charge_Entry_Date");
   const billingLag = calculateLag(filteredDenials, "Date_of_Service", "Claim_Submission_Date");
 
   const mainChartData = useMemo(() => {
     const map = {};
-    
-    filteredCharges.forEach(r => {
-        const postedDate = dayjs(r.Charge_Entry_Date);
-        if (!postedDate.isValid()) return;
-        const month = postedDate.format("MMM YY");
-        
-        if (!map[month]) map[month] = { 
-            paidSum: 0, billedSum: 0, adjustmentSum: 0, ccrSum: 0, ccrCount: 0, count: 0, 
-            date: postedDate.startOf("month"), 
-            fprTrueCount: 0, fprDenialCount: 0, deniedCount: 0, totalDenialRows: 0,
-            ncrPaid: 0, ncrBilled: 0, ncrAdj: 0,
-            target: Number(prevKPIs?.[`${selectedMetric.replace(" ", "_")}_Target`] || 0), 
-            baseline: Number(prevKPIs?.[`${selectedMetric.replace(" ", "_")}_Baseline`] || 0) 
-        };
 
-        map[month].paidSum += r.Paid_Amount || 0; 
-        map[month].billedSum += r.Billed_Amount || 0; 
-        map[month].adjustmentSum += r.Adjustment_Amount || 0; 
-        map[month].count++;
-        
-        const clean = Number(r.Is_Clean_Claim || 0);
-        if (!isNaN(clean) && clean >= 0 && clean <= 100) { 
-            map[month].ccrSum += clean; 
-            map[month].ccrCount++; 
-        }
+    filteredCharges.forEach(r => {
+      const postedDate = dayjs(r.Charge_Entry_Date);
+      if (!postedDate.isValid()) return;
+      const month = postedDate.format("MMM YY");
+
+      if (!map[month]) map[month] = {
+        paidSum: 0, billedSum: 0, adjustmentSum: 0, ccrSum: 0, ccrCount: 0, count: 0,
+        date: postedDate.startOf("month"),
+        fprTrueCount: 0, fprDenialCount: 0, deniedCount: 0, totalDenialRows: 0,
+        ncrPaid: 0, ncrBilled: 0, ncrAdj: 0,
+        target: Number(prevKPIs?.[`${selectedMetric.replace(" ", "_")}_Target`] || 0),
+        baseline: Number(prevKPIs?.[`${selectedMetric.replace(" ", "_")}_Baseline`] || 0)
+      };
+
+      map[month].paidSum += r.Paid_Amount || 0;
+      map[month].billedSum += r.Billed_Amount || 0;
+      map[month].adjustmentSum += r.Adjustment_Amount || 0;
+      map[month].count++;
+
+      const clean = Number(r.Is_Clean_Claim || 0);
+      if (!isNaN(clean) && clean >= 0 && clean <= 100) {
+        map[month].ccrSum += clean;
+        map[month].ccrCount++;
+      }
     });
 
     filteredNCR.forEach(r => {
-        const postedDate = dayjs(r.Charge_Entry_Date);
-        if (!postedDate.isValid()) return;
-        const month = postedDate.format("MMM YY");
-        
-        if (!map[month]) map[month] = { 
-            paidSum: 0, billedSum: 0, adjustmentSum: 0, ccrSum: 0, ccrCount: 0, count: 0, 
-            date: postedDate.startOf("month"), 
-            fprTrueCount: 0, fprDenialCount: 0, deniedCount: 0, totalDenialRows: 0,
-            ncrPaid: 0, ncrBilled: 0, ncrAdj: 0,
-            target: Number(prevKPIs?.[`${selectedMetric.replace(" ", "_")}_Target`] || 0), 
-            baseline: Number(prevKPIs?.[`${selectedMetric.replace(" ", "_")}_Baseline`] || 0) 
-        };
+      const postedDate = dayjs(r.Charge_Entry_Date);
+      if (!postedDate.isValid()) return;
+      const month = postedDate.format("MMM YY");
 
-        map[month].ncrPaid += r.Paid_Amount || 0;
-        map[month].ncrBilled += r.Billed_Amount || 0;
-        map[month].ncrAdj += r.Adjustment_Amount || 0;
+      if (!map[month]) map[month] = {
+        paidSum: 0, billedSum: 0, adjustmentSum: 0, ccrSum: 0, ccrCount: 0, count: 0,
+        date: postedDate.startOf("month"),
+        fprTrueCount: 0, fprDenialCount: 0, deniedCount: 0, totalDenialRows: 0,
+        ncrPaid: 0, ncrBilled: 0, ncrAdj: 0,
+        target: Number(prevKPIs?.[`${selectedMetric.replace(" ", "_")}_Target`] || 0),
+        baseline: Number(prevKPIs?.[`${selectedMetric.replace(" ", "_")}_Baseline`] || 0)
+      };
+
+      map[month].ncrPaid += r.Paid_Amount || 0;
+      map[month].ncrBilled += r.Billed_Amount || 0;
+      map[month].ncrAdj += r.Adjustment_Amount || 0;
     });
 
     filteredDenials.forEach(r => {
-          const d = dayjs(r.Date_of_Service); if(!d.isValid()) return; const m = d.format("MMM YY");
-          
-          if (!map[m]) map[m] = { 
-              paidSum: 0, billedSum: 0, adjustmentSum: 0, ccrSum: 0, ccrCount: 0, count: 0, 
-              date: d.startOf("month"), 
-              fprTrueCount: 0, fprDenialCount: 0, deniedCount: 0, totalDenialRows: 0, 
-              ncrPaid: 0, ncrBilled: 0, ncrAdj: 0,
-              target: Number(prevKPIs?.[`${selectedMetric.replace(" ", "_")}_Target`] || 0), 
-              baseline: Number(prevKPIs?.[`${selectedMetric.replace(" ", "_")}_Baseline`] || 0) 
-          };
+      const d = dayjs(r.Date_of_Service); if (!d.isValid()) return; const m = d.format("MMM YY");
 
-          if (map[m].totalDenialRows === undefined) map[m].totalDenialRows = 0;
-          if (map[m].deniedCount === undefined) map[m].deniedCount = 0;
-          if (map[m].fprTrueCount === undefined) map[m].fprTrueCount = 0;
-          if (map[m].fprDenialCount === undefined) map[m].fprDenialCount = 0;
+      if (!map[m]) map[m] = {
+        paidSum: 0, billedSum: 0, adjustmentSum: 0, ccrSum: 0, ccrCount: 0, count: 0,
+        date: d.startOf("month"),
+        fprTrueCount: 0, fprDenialCount: 0, deniedCount: 0, totalDenialRows: 0,
+        ncrPaid: 0, ncrBilled: 0, ncrAdj: 0,
+        target: Number(prevKPIs?.[`${selectedMetric.replace(" ", "_")}_Target`] || 0),
+        baseline: Number(prevKPIs?.[`${selectedMetric.replace(" ", "_")}_Baseline`] || 0)
+      };
 
-          map[m].totalDenialRows++;
-          if ((r.Claim_Status || "").toLowerCase().trim() === "denied") map[m].deniedCount++;
-          
-          if (r.Is_First_Pass_Resolution) map[m].fprTrueCount++;
-          map[m].fprDenialCount++;
+      if (map[m].totalDenialRows === undefined) map[m].totalDenialRows = 0;
+      if (map[m].deniedCount === undefined) map[m].deniedCount = 0;
+      if (map[m].fprTrueCount === undefined) map[m].fprTrueCount = 0;
+      if (map[m].fprDenialCount === undefined) map[m].fprDenialCount = 0;
+
+      map[m].totalDenialRows++;
+      if ((r.Claim_Status || "").toLowerCase().trim() === "denied") map[m].deniedCount++;
+
+      if (r.Is_First_Pass_Resolution) map[m].fprTrueCount++;
+      map[m].fprDenialCount++;
     });
 
     let chartData = Object.entries(map).sort((a, b) => a[1].date.unix() - b[1].date.unix()).map(([month, obj]) => {
-        let avgVal = 0;
-        if (selectedMetric === "GCR" && obj.billedSum > 0) avgVal = (obj.paidSum / obj.billedSum) * 100;
-        else if (selectedMetric === "NCR") {
-             const net = obj.ncrBilled - obj.ncrAdj;
-             if (net > 0) avgVal = (obj.ncrPaid / net) * 100;
-        }
-        else if (selectedMetric === "CCR") avgVal = obj.ccrCount > 0 ? obj.ccrSum / obj.ccrCount : (obj.target || 0);
-        else if (selectedMetric === "FPR") avgVal = obj.fprDenialCount > 0 ? (obj.fprTrueCount / obj.fprDenialCount) * 100 : 0;
-        else if (selectedMetric === "Denial Rate") avgVal = obj.totalDenialRows > 0 ? (obj.deniedCount / obj.totalDenialRows) * 100 : 0;
-        return { month, avg: avgVal, target: obj.target, baseline: obj.baseline };
+      let avgVal = 0;
+      if (selectedMetric === "GCR" && obj.billedSum > 0) avgVal = (obj.paidSum / obj.billedSum) * 100;
+      else if (selectedMetric === "NCR") {
+        const net = obj.ncrBilled - obj.ncrAdj;
+        if (net > 0) avgVal = (obj.ncrPaid / net) * 100;
+      }
+      else if (selectedMetric === "CCR") avgVal = obj.ccrCount > 0 ? obj.ccrSum / obj.ccrCount : (obj.target || 0);
+      else if (selectedMetric === "FPR") avgVal = obj.fprDenialCount > 0 ? (obj.fprTrueCount / obj.fprDenialCount) * 100 : 0;
+      else if (selectedMetric === "Denial Rate") avgVal = obj.totalDenialRows > 0 ? (obj.deniedCount / obj.totalDenialRows) * 100 : 0;
+      return { month, Avg: avgVal, target: obj.target, Baseline: obj.baseline };
     });
 
     if (chartData.length === 1) {
-        const p = chartData[0];
-        chartData = [
-            { ...p, month: "" },
-            p,
-            { ...p, month: " " }
-        ];
+      const p = chartData[0];
+      chartData = [
+        { ...p, month: "" },
+        p,
+        { ...p, month: " " }
+      ];
     }
 
     return chartData;
@@ -709,22 +672,22 @@ export default function Dashboard() {
   const arDaysTrendData = useMemo(() => {
     if (filteredOpenAR.length === 0) return [];
     const monthlyData = filteredOpenAR.reduce((acc, r) => {
-        const d = dayjs(r.Date_of_Service); if (!d.isValid()) return acc; const m = d.format("MMM YYYY");
-        if (!acc[m]) acc[m] = { arDaysValues: [], date: d.startOf("month") };
-        const val = Number(r.ar_days || 0); if (!isNaN(val) && val >= 0) acc[m].arDaysValues.push(val);
-        return acc;
+      const d = dayjs(r.Date_of_Service); if (!d.isValid()) return acc; const m = d.format("MMM YYYY");
+      if (!acc[m]) acc[m] = { arDaysValues: [], date: d.startOf("month") };
+      const val = Number(r.ar_days || 0); if (!isNaN(val) && val >= 0) acc[m].arDaysValues.push(val);
+      return acc;
     }, {});
     let finalData = Object.entries(monthlyData).map(([m, obj]) => ({
-        month: m, value: Math.round(obj.arDaysValues.length > 0 ? obj.arDaysValues.reduce((a, b) => a + b, 0) / obj.arDaysValues.length : 0)
+      month: m, value: Math.round(obj.arDaysValues.length > 0 ? obj.arDaysValues.reduce((a, b) => a + b, 0) / obj.arDaysValues.length : 0)
     })).sort((a, b) => dayjs(a.month, "MMM YYYY").valueOf() - dayjs(b.month, "MMM YYYY").valueOf());
 
     if (finalData.length === 1) {
-        const p = finalData[0];
-        finalData = [
-            { ...p, month: "" },
-            p,
-            { ...p, month: " " }
-        ];
+      const p = finalData[0];
+      finalData = [
+        { ...p, month: "" },
+        p,
+        { ...p, month: " " }
+      ];
     }
     return finalData;
   }, [filteredOpenAR]);
@@ -736,94 +699,93 @@ export default function Dashboard() {
   }, [filteredOpenAR]);
 
   const arAgingPieData = useMemo(() => {
-      const buckets = { "0-30 Days": 0, "31-60 Days": 0, "61-90 Days": 0, "90+ Days": 0 };
-      const targetMonthStr = dayjs(endDate).format("MMM YY");
-      const snapshotData = agingData.filter(row => row.month === targetMonthStr);
+    const buckets = { "0-30 Days": 0, "31-60 Days": 0, "61-90 Days": 0, "90+ Days": 0 };
+    const targetMonthStr = dayjs(endDate).format("MMM YY");
+    const snapshotData = agingData.filter(row => row.month === targetMonthStr);
 
-      snapshotData.forEach(item => {
-          let age = Number(item.aging || 0); 
-          let amt = Number(item.Aging_Amount || 0);
-          if (isNaN(age) || age < 0 || isNaN(amt)) return;
-          if (age <= 30) buckets["0-30 Days"] += amt; 
-          else if (age <= 60) buckets["31-60 Days"] += amt; 
-          else if (age <= 90) buckets["61-90 Days"] += amt; 
-          else buckets["90+ Days"] += amt;
-      });
+    snapshotData.forEach(item => {
+      let age = Number(item.aging || 0);
+      let amt = Number(item.Aging_Amount || 0);
+      if (isNaN(age) || age < 0 || isNaN(amt)) return;
+      if (age <= 30) buckets["0-30 Days"] += amt;
+      else if (age <= 60) buckets["31-60 Days"] += amt;
+      else if (age <= 90) buckets["61-90 Days"] += amt;
+      else buckets["90+ Days"] += amt;
+    });
 
-      const total = Object.values(buckets).reduce((a, b) => a + b, 0);
-      return Object.entries(buckets).map(([name, value]) => ({ 
-          name, 
-          value: total > 0 ? (value / total) * 100 : 0, 
-          rawAmount: value 
-      }));
+    const total = Object.values(buckets).reduce((a, b) => a + b, 0);
+    return Object.entries(buckets).map(([name, value]) => ({
+      name,
+      value: total > 0 ? (value / total) * 100 : 0,
+      rawAmount: value
+    }));
   }, [agingData, endDate]);
 
   const PIE_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444"];
 
   const dateLabels = useMemo(() => {
-      const start = dayjs(startDate); const end = dayjs(endDate);
-      let d = end.diff(start, 'day') + 1; if(d <= 1) d = 1;
-      let pe = start.subtract(1, 'day'); let ps = pe.clone().subtract(d - 1, 'day');
-      if (!ps.isValid() || !pe.isValid()) { ps = start.clone().subtract(d, 'day'); pe = ps.clone().add(d - 1, 'day'); }
-      return { current: `${start.format("MMM YY")} - ${end.format("MMM YY")}`, previous: `${ps.format("MMM YY")} - ${pe.format("MMM YY")}` };
+    const start = dayjs(startDate); const end = dayjs(endDate);
+    let d = end.diff(start, 'day') + 1; if (d <= 1) d = 1;
+    let pe = start.subtract(1, 'day'); let ps = pe.clone().subtract(d - 1, 'day');
+    if (!ps.isValid() || !pe.isValid()) { ps = start.clone().subtract(d, 'day'); pe = ps.clone().add(d - 1, 'day'); }
+    return { current: `${start.format("MMM YY")} - ${end.format("MMM YY")}`, previous: `${ps.format("MMM YY")} - ${pe.format("MMM YY")}` };
   }, [startDate, endDate]);
 
   const pyramidChartData = useMemo(() => {
-      const prevKPIsDynamic = calculateKPIs(prevCharges, prevDenials, prevOpenAR, prevNCR);
-      return [
-        { name: "GCR", current: currentKPIs.gcr, previous: prevKPIsDynamic.gcr },
-        { name: "NCR", current: currentKPIs.ncr, previous: prevKPIsDynamic.ncr },
-        { name: "CCR", current: currentKPIs.cleanClaimRate, previous: prevKPIsDynamic.cleanClaimRate },
-        { name: "FPR", current: currentKPIs.firstPassRate, previous: prevKPIsDynamic.firstPassRate },
-        { name: "Denial Rate", current: currentKPIs.denialRate, previous: prevKPIsDynamic.denialRate },
-      ].map(i => ({ name: i.name, current: i.current, previous: -i.previous }));
+    const prevKPIsDynamic = calculateKPIs(prevCharges, prevDenials, prevOpenAR, prevNCR);
+    return [
+      { name: "GCR", current: currentKPIs.gcr, previous: prevKPIsDynamic.gcr },
+      { name: "NCR", current: currentKPIs.ncr, previous: prevKPIsDynamic.ncr },
+      { name: "CCR", current: currentKPIs.cleanClaimRate, previous: prevKPIsDynamic.cleanClaimRate },
+      { name: "FPR", current: currentKPIs.firstPassRate, previous: prevKPIsDynamic.firstPassRate },
+      { name: "Denial Rate", current: currentKPIs.denialRate, previous: prevKPIsDynamic.denialRate },
+    ].map(i => ({ name: i.name, current: i.current, previous: -i.previous }));
   }, [currentKPIs, prevCharges, prevDenials, prevOpenAR, prevNCR]);
 
   const sideCardSparklines = useMemo(() => {
-      const start = dayjs(startDate); const end = dayjs(endDate); const totalDays = end.diff(start, 'day') + 1;
-      const segments = 6; const daysPerSegment = totalDays > 1 ? Math.ceil(totalDays / segments) : 1;
-      const segmentDataCharges = Array(segments).fill().map(() => ({ payments: 0, chargeLags: [] }));
-      const segmentDataDenials = Array(segments).fill().map(() => ({ billingLags: [] }));
-      
-      filteredCharges.forEach(r => {
-        const d = dayjs(r.Charge_Entry_Date);
-        if (d.isBetween(start, end, null, '[]')) {
-            const idx = Math.min(Math.floor(d.diff(start, 'day') / daysPerSegment), segments - 1);
-            segmentDataCharges[idx].payments += r.Paid_Amount || 0;
-            if(r.Date_of_Service && r.Charge_Entry_Date) segmentDataCharges[idx].chargeLags.push(d.diff(dayjs(r.Date_of_Service), 'day'));
-        }
-      });
-      filteredDenials.forEach(r => {
-          const d = dayjs(r.Date_of_Service);
-          if (d.isBetween(start, end, null, '[]')) {
-              const idx = Math.min(Math.floor(d.diff(start, 'day') / daysPerSegment), segments - 1);
-              if(r.Date_of_Service && r.Claim_Submission_Date) segmentDataDenials[idx].billingLags.push(dayjs(r.Claim_Submission_Date).diff(d, 'day'));
-          }
-      });
-      return {
-          paymentsData: segmentDataCharges.map(s => ({ value: s.payments, unit: 'amount' })),
-          chargeLagData: segmentDataCharges.map(s => ({ value: s.chargeLags.length ? s.chargeLags.reduce((a,b)=>a+b,0)/s.chargeLags.length : 0, unit: 'days' })),
-          billingLagData: segmentDataDenials.map(s => ({ value: s.billingLags.length ? s.billingLags.reduce((a,b)=>a+b,0)/s.billingLags.length : 0, unit: 'days' }))
-      };
+    const start = dayjs(startDate); const end = dayjs(endDate); const totalDays = end.diff(start, 'day') + 1;
+    const segments = 6; const daysPerSegment = totalDays > 1 ? Math.ceil(totalDays / segments) : 1;
+    const segmentDataCharges = Array(segments).fill().map(() => ({ payments: 0, chargeLags: [] }));
+    const segmentDataDenials = Array(segments).fill().map(() => ({ billingLags: [] }));
+
+    filteredCharges.forEach(r => {
+      const d = dayjs(r.Charge_Entry_Date);
+      if (d.isBetween(start, end, null, '[]')) {
+        const idx = Math.min(Math.floor(d.diff(start, 'day') / daysPerSegment), segments - 1);
+        segmentDataCharges[idx].payments += r.Paid_Amount || 0;
+        if (r.Date_of_Service && r.Charge_Entry_Date) segmentDataCharges[idx].chargeLags.push(d.diff(dayjs(r.Date_of_Service), 'day'));
+      }
+    });
+    filteredDenials.forEach(r => {
+      const d = dayjs(r.Date_of_Service);
+      if (d.isBetween(start, end, null, '[]')) {
+        const idx = Math.min(Math.floor(d.diff(start, 'day') / daysPerSegment), segments - 1);
+        if (r.Date_of_Service && r.Claim_Submission_Date) segmentDataDenials[idx].billingLags.push(dayjs(r.Claim_Submission_Date).diff(d, 'day'));
+      }
+    });
+    return {
+      paymentsData: segmentDataCharges.map(s => ({ value: s.payments, unit: 'amount' })),
+      chargeLagData: segmentDataCharges.map(s => ({ value: s.chargeLags.length ? s.chargeLags.reduce((a, b) => a + b, 0) / s.chargeLags.length : 0, unit: 'days' })),
+      billingLagData: segmentDataDenials.map(s => ({ value: s.billingLags.length ? s.billingLags.reduce((a, b) => a + b, 0) / s.billingLags.length : 0, unit: 'days' }))
+    };
   }, [filteredCharges, filteredDenials, startDate, endDate]);
 
   const sideCardData = [
     { title: "Charge Lag", value: chargeLag, color: "#3b82f6", suffix: "days", sparklineData: sideCardSparklines.chargeLagData, hideTrend: true },
     { title: "Billing Lag", value: billingLag, color: "#8b5cf6", suffix: "days", sparklineData: sideCardSparklines.billingLagData, hideTrend: true },
-    { 
-        title: "Total Payments", 
-        formattedValue: `${currentKPIs.totalPayments.toLocaleString()} (${formatCompactNumber(currentKPIs.totalPayments)})`, 
-        value: currentKPIs.totalPayments, 
-        trend: trend(currentKPIs.totalPayments, prevKPIs.totalPayments, true), 
-        color: "#10b981", 
-        prefix: "$", 
-        sparklineData: sideCardSparklines.paymentsData, 
-        link: "/totalpayment", 
-        hideTrend: true 
+    {
+      title: "Total Payments",
+      formattedValue: `${currentKPIs.totalPayments.toLocaleString()} (${formatCompactNumber(currentKPIs.totalPayments)})`,
+      value: currentKPIs.totalPayments,
+      trend: trend(currentKPIs.totalPayments, prevKPIs.totalPayments, true),
+      color: "#10b981",
+      prefix: "$",
+      sparklineData: sideCardSparklines.paymentsData,
+      link: "/totalpayment",
+      hideTrend: true
     },
   ];
 
-  // --- STYLES ---
   const styles = {
     container: { fontFamily: "'Inter', system-ui, -apple-system, sans-serif", backgroundColor: "#f9fafb", minHeight: "100vh", color: "#111827" },
     stickyHeader: { position: "sticky", top: 0, zIndex: 50, backgroundColor: "#f9fafb", padding: "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" },
@@ -852,38 +814,42 @@ export default function Dashboard() {
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
           <img src="/logo.png" alt="Logo" style={{ height: "40px", objectFit: "contain" }} onError={(e) => e.target.style.display = 'none'} />
           <div>
-            <h2 style={styles.headerTitle}>RCM Dashboard</h2>
-            <p style={styles.headerSubtitle}>Revenue Cycle Optimization</p>
+            <h2 style={styles.headerTitle}>Dashboard</h2>
+            <p style={styles.headerSubtitle}>Revenue Cycle Management Optimization</p>
           </div>
         </div>
 
         <div style={styles.controlGroup}>
           <div style={styles.inputGroup}>
-            <label style={styles.label}>Period Start</label>
+            <label style={styles.label}>From</label>
             <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} style={styles.input} />
           </div>
           <div style={styles.inputGroup}>
-            <label style={styles.label}>Period End</label>
+            <label style={styles.label}>To</label>
             <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} style={styles.input} />
           </div>
           <div style={styles.inputGroup}>
             <label style={styles.label}>Client</label>
-            <select value={selectedClient} onChange={(e) => setSelectedClient(e.target.value)} style={styles.input}>
-              <option value="all">All Clients</option>
-              <option value="entfw">ENTFW</option>
+            <select value={selectedClient} onChange={(e) => {
+              setSelectedClient(e.target.value);
+              // Reset upload state when changing clients to allow API fetch
+              setIsUploadedData(false);
+            }} style={styles.input}>
               <option value="eca">ECA</option>
+              <option value="piedmont">ECA Piedmont</option>
+              <option value="entfw">ENTFW</option>
               <option value="soundhealth">Sound Health</option>
             </select>
           </div>
-          
+
           <div style={{ marginLeft: "12px", position: "relative" }}>
-             <input type="file" multiple accept=".csv" onChange={handleFileUpload} ref={fileInputRef} style={{ display: "none" }} />
-             <button type="button" onClick={() => fileInputRef.current.click()} style={styles.uploadBtn}>Upload CSVs</button>
-             {uploadError && (
-                <div style={{ position: 'absolute', top: '45px', right: '0', background: '#fee2e2', color: '#ef4444', padding: '8px', borderRadius: '4px', fontSize: '12px', border: '1px solid #ef4444', whiteSpace: 'nowrap', zIndex: 60 }}>
-                   {uploadError}
-                </div>
-             )}
+            <input type="file" multiple accept=".csv" onChange={handleFileUpload} ref={fileInputRef} style={{ display: "none" }} />
+            <button type="button" onClick={() => fileInputRef.current.click()} style={styles.uploadBtn}>Upload CSVs</button>
+            {uploadError && (
+              <div style={{ position: 'absolute', top: '45px', right: '0', background: '#fee2e2', color: '#ef4444', padding: '8px', borderRadius: '4px', fontSize: '12px', border: '1px solid #ef4444', whiteSpace: 'nowrap', zIndex: 60 }}>
+                {uploadError}
+              </div>
+            )}
           </div>
           <DropdownAvatar />
         </div>
@@ -892,89 +858,89 @@ export default function Dashboard() {
       <div style={styles.gridContainer}>
         {/* KPI Cards Row */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px" }}>
-           {[
+          {[
             { title: "Gross Collection Rate", value: currentKPIs.gcr.toFixed(2), suffix: "%", trend: kpisWithTrend.gcr, spark: kpiSparklines.gcr, link: "/gcr", trendSuffix: "%" },
             { title: "Net Collection Rate", value: currentKPIs.ncr.toFixed(2), suffix: "%", trend: kpisWithTrend.ncr, spark: kpiSparklines.ncr, link: "/ncr", trendSuffix: "%" },
             { title: "Denial Rate", value: currentKPIs.denialRate.toFixed(2), suffix: "%", trend: kpisWithTrend.denialRate, spark: kpiSparklines.denialRate, link: "/denials", trendSuffix: "%" },
             { title: "First Pass Rate", value: currentKPIs.firstPassRate.toFixed(2), suffix: "%", trend: kpisWithTrend.firstPassRate, spark: kpiSparklines.firstPassRate, trendSuffix: "%" },
             { title: "Clean Claim Rate", value: currentKPIs.cleanClaimRate.toFixed(2), suffix: "%", trend: kpisWithTrend.cleanClaimRate, spark: kpiSparklines.cleanClaimRate, trendSuffix: "%" },
             { title: "Total Claims", value: Math.round(currentKPIs.totalClaims).toLocaleString(), suffix: "", trend: kpisWithTrend.totalClaims, spark: kpiSparklines.totalClaims, link: "/claims", trendSuffix: "" },
-           ].map((kpi, idx) => (
-             <Link to={kpi.link || "#"} key={idx} style={{ textDecoration: "none" }}>
-               <div style={styles.card} 
-                    onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 4px 6px -1px rgba(0,0,0,0.1)"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.1)"; }}>
-                 
-                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
-                   <div style={styles.kpiTitle}>{kpi.title}</div>
-                   
-                   <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "2px" }}>
-                      <div style={styles.trendBadge(kpi.trend.isPositive, kpi.trend.color)}>
-                        {kpi.trend.arrow} {kpi.trend.percentChange}{kpi.trendSuffix}
-                      </div>
-                      <div style={{ fontSize: "10px", color: "#9ca3af", whiteSpace: "nowrap" }}>
-                        vs {kpi.trend.previousValue}
-                      </div>
-                   </div>
-                 </div>
+          ].map((kpi, idx) => (
+            <Link to={kpi.link || "#"} key={idx} style={{ textDecoration: "none" }}>
+              <div style={styles.card}
+                onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 4px 6px -1px rgba(0,0,0,0.1)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.1)"; }}>
 
-                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
-                   <div style={styles.kpiValue}>{kpi.value}{kpi.suffix}</div>
-                   
-                   <div style={{ width: "70px", height: "35px" }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={kpi.spark}>
-                          <Area 
-                            type="monotone" 
-                            dataKey="value" 
-                            stroke={kpi.trend.isPositive ? "#10b981" : "#ef4444"} 
-                            fill={kpi.trend.isPositive ? "#d1fae5" : "#fee2e2"} 
-                            strokeWidth={2} 
-                          />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                   </div>
-                 </div>
-               </div>
-             </Link>
-           ))}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
+                  <div style={styles.kpiTitle}>{kpi.title}</div>
+
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "2px" }}>
+                    <div style={styles.trendBadge(kpi.trend.isPositive, kpi.trend.color)}>
+                      {kpi.trend.arrow} {kpi.trend.percentChange}{kpi.trendSuffix}
+                    </div>
+                    <div style={{ fontSize: "10px", color: "#9ca3af", whiteSpace: "nowrap" }}>
+                      vs {kpi.trend.previousValue}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+                  <div style={styles.kpiValue}>{kpi.value}{kpi.suffix}</div>
+
+                  <div style={{ width: "70px", height: "35px" }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={kpi.spark}>
+                        <Area
+                          type="monotone"
+                          dataKey="value"
+                          stroke={kpi.trend.isPositive ? "#10b981" : "#ef4444"}
+                          fill={kpi.trend.isPositive ? "#d1fae5" : "#fee2e2"}
+                          strokeWidth={2}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+            </Link>
+          ))}
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "3fr 1fr", gap: "16px" }}>
-          
-          <div style={styles.card}>
-             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
-               <h3 style={styles.sectionTitle}>Performance Trends</h3>
-               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "10px" }}>
-                   <div style={styles.tabGroup}>
-                     {["GCR", "NCR", "Denial Rate", "CCR", "FPR"].map(m => (
-                       <button key={m} onClick={() => setSelectedMetric(m)} style={styles.tabBtn(selectedMetric === m)}>
-                         {m}
-                       </button>
-                     ))}
-                   </div>
-               </div>
-             </div>
-             
-             <div style={{ height: "360px", width: "100%" }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={mainChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                    <CartesianGrid vertical={false} stroke="#f3f4f6" />
-                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#9ca3af" }} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#9ca3af" }} tickFormatter={v => `${Math.round(v)}%`} />
-                    <Tooltip contentStyle={{ borderRadius: "8px", border: "1px solid #e5e7eb", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)", padding: "8px" }} itemStyle={{ fontSize: "12px", fontWeight: "600" }} labelStyle={{ fontSize: "11px", color: "#6b7280", marginBottom: "4px" }} />
-                    <Line type="monotone" dataKey="avg" stroke="#0ea5e9" strokeWidth={2.5} dot={{ r: 4, fill: "#fff", stroke: "#0ea5e9", strokeWidth: 2 }} activeDot={{ r: 6, strokeWidth: 0 }} />
-                    <Line type="monotone" dataKey="target" stroke="#f43f5e" strokeDasharray="3 3" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="baseline" stroke="#8b5cf6" strokeDasharray="3 3" strokeWidth={2} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-             </div>
 
-             <div style={{ display: "flex", justifyContent: "center", marginTop: "4px", gap: "16px", fontSize: "12px", fontWeight: "500", color: "#374151" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "4px" }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: "#0ea5e9" }}></div>Current Average</div>
-                <div style={{ display: "flex", alignItems: "center", gap: "4px" }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: "#f43f5e" }}></div>Target</div>
-                <div style={{ display: "flex", alignItems: "center", gap: "4px" }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: "#8b5cf6" }}></div>Baseline</div>
-             </div>
+          <div style={styles.card}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
+              <h3 style={styles.sectionTitle}>Performance Trends</h3>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "10px" }}>
+                <div style={styles.tabGroup}>
+                  {["GCR", "NCR", "Denial Rate", "CCR", "FPR"].map(m => (
+                    <button key={m} onClick={() => setSelectedMetric(m)} style={styles.tabBtn(selectedMetric === m)}>
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ height: "360px", width: "100%" }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={mainChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <CartesianGrid vertical={false} stroke="#f3f4f6" />
+                  <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#9ca3af" }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#9ca3af" }} tickFormatter={v => `${Math.round(v)}%`} />
+                  <Tooltip contentStyle={{ borderRadius: "8px", border: "1px solid #e5e7eb", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)", padding: "8px" }} itemStyle={{ fontSize: "12px", fontWeight: "600" }} labelStyle={{ fontSize: "11px", color: "#6b7280", marginBottom: "4px" }} formatter={(value) => `${Number(value).toFixed(2)}%`} />
+                  <Line type="monotone" dataKey="Avg" stroke="#0ea5e9" strokeWidth={2.5} dot={{ r: 4, fill: "#fff", stroke: "#0ea5e9", strokeWidth: 2 }} activeDot={{ r: 6, strokeWidth: 0 }} />
+                  {/* <Line type="monotone" dataKey="target" stroke="#f43f5e" strokeDasharray="3 3" strokeWidth={2} dot={false} /> */}
+                  <Line type="monotone" dataKey="Baseline" stroke="#8b5cf6" strokeDasharray="3 3" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "center", marginTop: "4px", gap: "16px", fontSize: "12px", fontWeight: "500", color: "#374151" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "4px" }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: "#0ea5e9" }}></div>Current Average</div>
+              {/* <div style={{ display: "flex", alignItems: "center", gap: "4px" }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: "#f43f5e" }}></div>Target</div> */}
+              <div style={{ display: "flex", alignItems: "center", gap: "4px" }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: "#8b5cf6" }}></div>Pre Jorie Baseline</div>
+            </div>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -985,19 +951,19 @@ export default function Dashboard() {
                     <div style={styles.kpiTitle}>{card.title}</div>
                     <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
                       <span style={{ fontSize: "24px", fontWeight: "800", color: "#111827" }}>
-                        {card.prefix}{card.formattedValue || Number(card.value).toLocaleString()}{card.suffix && <span style={{fontSize:"14px", marginLeft:"4px", fontWeight:"600", color:"#6b7280"}}>{card.suffix}</span>}
+                        {card.prefix}{card.formattedValue || Number(card.value).toLocaleString()}{card.suffix && <span style={{ fontSize: "14px", marginLeft: "4px", fontWeight: "600", color: "#6b7280" }}>{card.suffix}</span>}
                       </span>
                     </div>
                     {!card.hideTrend && (
-                        <div style={{ marginTop: "2px", fontSize: "12px", color: card.trend.color, fontWeight: "600" }}>
-                           {card.trend.arrow} {card.trend.percentChange} vs prev
-                        </div>
+                      <div style={{ marginTop: "2px", fontSize: "12px", color: card.trend.color, fontWeight: "600" }}>
+                        {card.trend.arrow} {card.trend.percentChange} vs prev
+                      </div>
                     )}
                   </div>
                   <div style={{ height: "45px", marginTop: "12px" }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={card.sparklineData}>
-                          <Bar dataKey="value" fill={card.color} radius={[3, 3, 0, 0]} />
+                        <Bar dataKey="value" fill={card.color} radius={[3, 3, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -1008,107 +974,107 @@ export default function Dashboard() {
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px" }}>
-           <div style={styles.card}>
-              <div style={styles.kpiTitle}>AR Days Trend</div>
-              <div style={styles.kpiValue}>{avgArDays} Days</div>
-              <div style={{ height: "180px", marginTop: "12px" }}>
-                 <ResponsiveContainer width="100%" height="100%">
-                   <LineChart data={arDaysTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                     <CartesianGrid vertical={false} stroke="#f3f4f6" />
-                     <XAxis 
-                       dataKey="month" 
-                       axisLine={false} 
-                       tickLine={false} 
-                       tick={{ fontSize: 10, fill: "#9ca3af" }} 
-                       dy={10} 
-                       interval="preserveStartEnd"
-                     />
-                     <YAxis 
-                       axisLine={false} 
-                       tickLine={false} 
-                       tick={{ fontSize: 10, fill: "#9ca3af" }} 
-                     />
-                     <Tooltip />
-                     <Line type="monotone" dataKey="value" stroke="#8b5cf6" strokeWidth={3} dot={{r: 4, fill: "#8b5cf6", strokeWidth: 2, stroke: "#fff"}} />
-                   </LineChart>
-                 </ResponsiveContainer>
-              </div>
-           </div>
+          <div style={styles.card}>
+            <div style={styles.kpiTitle}>AR Days Trend</div>
+            <div style={styles.kpiValue}>{avgArDays} Days</div>
+            <div style={{ height: "180px", marginTop: "12px" }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={arDaysTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid vertical={false} stroke="#f3f4f6" />
+                  <XAxis
+                    dataKey="month"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 10, fill: "#9ca3af" }}
+                    dy={10}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 10, fill: "#9ca3af" }}
+                  />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="value" stroke="#8b5cf6" strokeWidth={3} dot={{ r: 4, fill: "#8b5cf6", strokeWidth: 2, stroke: "#fff" }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
 
-           <div style={styles.card}>
+          <div style={styles.card}>
 
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-                 <div style={styles.kpiTitle}>AR Aging Buckets</div>
-                 <div style={{ fontSize: "11px", fontWeight: "600", color: "#6b7280" }}>
-                   Till {dayjs(endDate).format("MMM YYYY")}
-                 </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+              <div style={styles.kpiTitle}>AR Aging Buckets</div>
+              <div style={{ fontSize: "11px", fontWeight: "600", color: "#6b7280" }}>
+                Till {dayjs(endDate).format("MMM YYYY")}
               </div>
-              <div style={{ display: "flex", height: "200px", alignItems: "center" }}>
-                 <div style={{ flex: 1, height: "100%" }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie 
-                            data={arAgingPieData} 
-                            cx="50%" 
-                            cy="50%" 
-                            innerRadius={60} 
-                            outerRadius={80} 
-                            paddingAngle={5} 
-                            dataKey="value" 
-                            stroke="none"
-                        >
-                          {arAgingPieData.map((entry, index) => <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
-                        </Pie>
-                        <Tooltip formatter={(val, name, props) => [`$${props.payload.rawAmount.toLocaleString()}`, `${val.toFixed(1)}%`]} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                 </div>
-                 <div style={{ flex: 0.8, display: "flex", flexDirection: "column", justifyContent: "center", gap: "10px", paddingRight: "10px" }}>
-                    {arAgingPieData.map((entry, idx) => (
-                      <div key={idx} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "11px" }}>
-                        <div style={{ display: "flex", alignItems: "center" }}>
-                            <div style={{ width: 8, height: 8, borderRadius: "50%", background: PIE_COLORS[idx % PIE_COLORS.length], marginRight: 8 }}></div>
-                            <span style={{ color: "#374151", fontWeight: "500" }}>{entry.name}</span>
+            </div>
+            <div style={{ display: "flex", height: "200px", alignItems: "center" }}>
+              <div style={{ flex: 1, height: "100%" }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={arAgingPieData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={5}
+                      dataKey="value"
+                      stroke="none"
+                    >
+                      {arAgingPieData.map((entry, index) => <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
+                    </Pie>
+                    <Tooltip formatter={(val, name, props) => [`$${props.payload.rawAmount.toLocaleString()}`, `${val.toFixed(1)}%`]} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div style={{ flex: 0.8, display: "flex", flexDirection: "column", justifyContent: "center", gap: "10px", paddingRight: "10px" }}>
+                {arAgingPieData.map((entry, idx) => (
+                  <div key={idx} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "11px" }}>
+                    <div style={{ display: "flex", alignItems: "center" }}>
+                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: PIE_COLORS[idx % PIE_COLORS.length], marginRight: 8 }}></div>
+                      <span style={{ color: "#374151", fontWeight: "500" }}>{entry.name}</span>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+                      <span style={{ fontWeight: "700", color: "#111827" }}>${(entry.rawAmount || 0).toLocaleString()}</span>
+                      <span style={{ fontSize: "10px", color: "#6b7280" }}>{entry.value.toFixed(0)}%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div style={styles.card}>
+            <div style={styles.kpiTitle}>Period Comparison</div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", fontSize: "11px", fontWeight: "600", textTransform: "uppercase", color: "#6b7280" }}>
+              <span>Prev: {dateLabels.previous}</span>
+              <span>Curr: {dateLabels.current}</span>
+            </div>
+            <div style={{ height: "180px" }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart layout="vertical" data={pyramidChartData} stackOffset="sign" barGap={0}>
+                  <XAxis type="number" hide />
+                  <YAxis type="category" dataKey="name" width={70} tick={{ fontSize: 10, fill: "#4b5563" }} axisLine={false} tickLine={false} />
+                  <Tooltip cursor={{ fill: 'transparent' }} content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      return (
+                        <div style={{ background: "#fff", padding: "8px", border: "1px solid #e5e7eb", borderRadius: "6px", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)" }}>
+                          <div style={{ fontWeight: 600, fontSize: "12px" }}>{payload[0].payload.name}</div>
+                          <div style={{ color: "#8b5cf6", fontSize: "12px" }}>Prev: {Math.abs(payload[0].payload.previous).toFixed(1)}%</div>
+                          <div style={{ color: "#3b82f6", fontSize: "12px" }}>Curr: {payload[0].payload.current.toFixed(1)}%</div>
                         </div>
-                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
-                            <span style={{ fontWeight: "700", color: "#111827" }}>${(entry.rawAmount || 0).toLocaleString()}</span>
-                            <span style={{ fontSize: "10px", color: "#6b7280" }}>{entry.value.toFixed(0)}%</span>
-                        </div>
-                      </div>
-                    ))}
-                 </div>
-              </div>
-           </div>
-
-           <div style={styles.card}>
-              <div style={styles.kpiTitle}>Period Comparison</div>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", fontSize: "11px", fontWeight: "600", textTransform: "uppercase", color: "#6b7280" }}>
-                 <span>Prev: {dateLabels.previous}</span>
-                 <span>Curr: {dateLabels.current}</span>
-              </div>
-              <div style={{ height: "180px" }}>
-                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart layout="vertical" data={pyramidChartData} stackOffset="sign" barGap={0}>
-                       <XAxis type="number" hide />
-                       <YAxis type="category" dataKey="name" width={70} tick={{ fontSize: 10, fill: "#4b5563" }} axisLine={false} tickLine={false} />
-                       <Tooltip cursor={{fill: 'transparent'}} content={({ active, payload }) => {
-                          if (active && payload && payload.length) {
-                            return (
-                              <div style={{ background: "#fff", padding: "8px", border: "1px solid #e5e7eb", borderRadius: "6px", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)" }}>
-                                <div style={{fontWeight:600, fontSize:"12px"}}>{payload[0].payload.name}</div>
-                                <div style={{color:"#8b5cf6", fontSize:"12px"}}>Prev: {Math.abs(payload[0].payload.previous).toFixed(1)}%</div>
-                                <div style={{color:"#3b82f6", fontSize:"12px"}}>Curr: {payload[0].payload.current.toFixed(1)}%</div>
-                              </div>
-                            );
-                          } return null;
-                       }}/>
-                       <ReferenceLine x={0} stroke="#d1d5db" />
-                       <Bar dataKey="previous" fill="#8b5cf6" barSize={10} radius={[4, 0, 0, 4]} />
-                       <Bar dataKey="current" fill="#3b82f6" barSize={10} radius={[0, 4, 4, 0]} />
-                    </BarChart>
-                 </ResponsiveContainer>
-              </div>
-           </div>
+                      );
+                    } return null;
+                  }} />
+                  <ReferenceLine x={0} stroke="#d1d5db" />
+                  <Bar dataKey="previous" fill="#8b5cf6" barSize={10} radius={[4, 0, 0, 4]} />
+                  <Bar dataKey="current" fill="#3b82f6" barSize={10} radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
         </div>
       </div>
       <button style={styles.floatingBotBtn} onClick={() => setAiBotOpen(true)} title="AI Assistant">🤖</button>
